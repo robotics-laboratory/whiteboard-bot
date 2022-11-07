@@ -1,0 +1,38 @@
+version: "3.5"
+
+services:
+  wbb-amd64:
+    container_name: wbb
+    image: cr.yandex/crp8hpfj5tuhlaodm4dl/wbb:0.1.0-amd64
+    stdin_open: true
+    privileged: true
+    tty: true
+    build:
+      dockerfile: Dockerfile
+      context: .
+      args:
+        ARCH: amd64
+    ports:
+    - "2222:2222"
+    - "9090:9090"
+    volumes:
+      - "${PWD}:/wbb"
+      - "/dev:/dev"
+
+  wbb-arm64v8:
+    container_name: wbb
+    image: cr.yandex/crp8hpfj5tuhlaodm4dl/wbb:0.1.0-arm64v8
+    stdin_open: true
+    privileged: true
+    tty: true
+    build:
+      dockerfile: Dockerfile
+      context: .
+      args:
+        ARCH: arm64v8
+    ports:
+    - "2222:2222"
+    - "9090:9090"
+    volumes:
+      - "${PWD}:/wbb"
+      - "/dev:/dev"
