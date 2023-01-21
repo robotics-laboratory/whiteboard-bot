@@ -21,15 +21,26 @@ bool export_camera_calibration(
 
     for (size_t i = 0; i < rows; i++) {
         for (size_t j = 0; j < columns; j++) {
+<<<<<<< HEAD
             float value = camera_matrix(i, j);
+=======
+            double value = camera_matrix(i, j);
+>>>>>>> 338ddca948f7517ea16839be8f5b87a66a7f3c99
             output_file << value << std::endl;
         }
     }
 
+<<<<<<< HEAD
     rows = distance_coefficients.rows;
 
     for (size_t i = 0; i < rows; i++) {
         double value = distance_coefficients[i];
+=======
+    columns = camera_matrix.cols;
+
+    for (size_t j = 0; j < columns; j++) {
+        double value = distance_coefficients[j];
+>>>>>>> 338ddca948f7517ea16839be8f5b87a66a7f3c99
         output_file << value << std::endl;
     }
     output_file.close();
@@ -90,6 +101,10 @@ int main(int argc, char** argv) {
 
     std::cout << "Calibrating..." << std::endl;
 
+<<<<<<< HEAD
+=======
+    std::cout << world_corners_coords.size() << " " << image_corners_coords.size() << std::endl;
+>>>>>>> 338ddca948f7517ea16839be8f5b87a66a7f3c99
     float error = cv::calibrateCamera(
         world_corners_coords,
         image_corners_coords,
