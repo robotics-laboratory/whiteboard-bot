@@ -28,7 +28,7 @@ target_include_directories(camera_visualization PUBLIC
   "$<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>"
   "$<INSTALL_INTERFACE:include/${PROJECT_NAME}>")
 
-ament_target_dependencies(camera_calibration OpenCV)
+ament_target_dependencies(camera_calibration OpenCV rclcpp)
 
 ament_target_dependencies(camera_visualization rclcpp sensor_msgs OpenCV cv_bridge)
 

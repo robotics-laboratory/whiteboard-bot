@@ -1,5 +1,4 @@
 #include <camera/camera_visualization.hpp>
-#include <camera/logger.hpp>
 
 using namespace std::chrono_literals;
 
@@ -14,7 +13,6 @@ CamVisualization::CamVisualization(
 }
 
 void CamVisualization::timer_callback() {
-    LOG_INIT_COUT();
     cv_bridge::CvImagePtr cv_ptr;
 
     cv::Mat raw_image;
@@ -43,7 +41,8 @@ void CamVisualization::timer_callback() {
     cv::aruco::detectMarkers(undistorted_image, aruco_markers_dict, corners, ids);
 
     if (ids.size() == 4) {
-        log(LOG_DEBUG) << "Starting recalculating of homography matrix\n";
+        RCLCPP_DEBUG(this->get_logger(), "Starting recalculating of homography matrix");
+
         for (size_t i = 0; i < ids.size(); ++i) {
             id_corners_marker.push_back({ids[i], corners[i]});
         }
@@ -64,7 +63,7 @@ void CamVisualization::timer_callback() {
             cv::Point(0, frame_size.height - 1)};
 
         homography_matrix = cv::findHomography(src_vertices, dst_vertices);
-        log(LOG_DEBUG) << "Homography matrix recalculated successfully\n";
+        RCLCPP_DEBUG(this->get_logger(), "Homography matrix recalculated successfully");
     }
 
     cv::Mat warped_image;
@@ -74,5 +73,5 @@ void CamVisualization::timer_callback() {
     cv_bridge::CvImage(std_msgs::msg::Header(), "bgr8", warped_image).toCompressedImageMsg(msg);
 
     publisher->publish(msg);
-    log(LOG_DEBUG) << "Frame published successfully\n";
+    RCLCPP_DEBUG(this->get_logger(), "Frame published successfully");
 }

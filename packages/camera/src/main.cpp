@@ -1,12 +1,9 @@
 #include <camera/camera_visualization.hpp>
-#include <camera/logger.hpp>
 
 bool import_camera_calibration(cv::Matx33f& camera_matrix, cv::Vec<float, 5>& distance_coefficients) {
-    LOG_INIT_COUT();
     std::ifstream input_file("/wbb/calibration/camera_calibration_coefs");
 
     if (!input_file) {
-        log(LOG_ERR) << "Unable to open calibration file\n";
         return false;
     }
 
@@ -29,27 +26,23 @@ bool import_camera_calibration(cv::Matx33f& camera_matrix, cv::Vec<float, 5>& di
 };
 
 int main(int argc, char* argv[]) {
-    LOG_INIT_COUT();
-
-    // log.set_log_level(LOG_DEBUG);
-
     cv::VideoCapture input;
     input.open(0);
 
     if (!input.isOpened()) {
-        log(LOG_ERR) << "Unable to open the camera\n";
+        RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Unable to open the camera");
         return -1;
     }
-    log(LOG_INFO) << "Camera opened successfully\n";
+    RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "Camera opened successfully");
 
     cv::Matx33f camera_matrix;
     cv::Vec<float, 5> distance_coefficients;
 
     if (!import_camera_calibration(camera_matrix, distance_coefficients)) {
-        log(LOG_ERR) << "Unable to open the calibration file\n";
+        RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Unable to open the calibration file");
         return -1;
     }
-    log(LOG_INFO) << "Calibration file opened successfully\n";
+    RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "Calibration file opened successfully");
 
     rclcpp::init(argc, argv);
     rclcpp::spin(std::make_unique<CamVisualization>(input, camera_matrix, distance_coefficients));

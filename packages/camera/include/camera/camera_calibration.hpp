@@ -6,6 +6,7 @@
 #include <opencv2/core.hpp>
 #include <opencv2/highgui.hpp>
 #include <opencv2/imgproc.hpp>
+#include <rclcpp/rclcpp.hpp>
 
 std::string PATH_TO_IMAGES = "/wbb/calibration/calibration_images/*.png";
 cv::Size pattern_size(9, 6);  // Amount of cells on each side of chessboard

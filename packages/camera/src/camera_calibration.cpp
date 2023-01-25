@@ -1,5 +1,4 @@
 #include <camera/camera_calibration.hpp>
-#include <camera/logger.hpp>
 
 bool export_camera_calibration(
     std::string file_path, cv::Matx33f& camera_matrix, cv::Vec<float, 5>& distance_coefficients) {
@@ -31,7 +30,6 @@ bool export_camera_calibration(
 }
 
 int main(int argc, char** argv) {
-    LOG_INIT_COUT();
     (void)argc;
     (void)argv;
 
@@ -85,7 +83,7 @@ int main(int argc, char** argv) {
     int flags = cv::CALIB_FIX_ASPECT_RATIO + cv::CALIB_FIX_K3 + cv::CALIB_ZERO_TANGENT_DIST +
                 cv::CALIB_FIX_PRINCIPAL_POINT;
 
-    log(LOG_INFO) << "Calibrating...\n";
+    RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "Calibrating...");
     cv::calibrateCamera(
         world_corners_coords,
         image_corners_coords,
@@ -97,10 +95,10 @@ int main(int argc, char** argv) {
         flags);
 
     if (export_camera_calibration(
-            "/wbb/calibration/camera_calibration_coefs", camera_matrix, distance_coefficients)) {
-        log(LOG_INFO) << "Matrices saved successfully\n";
+            "/wbb/calibration/camera_calibration_coefs", camera_matrix, distance_coefficients)) {    
+        RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "Matrices saved successfully");
     } else {
-        log(LOG_INFO) << "Unable to calibrate camera\n";
+        RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "Unable to export calibration");
         return -1;
     }
 
