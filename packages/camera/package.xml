@@ -4,7 +4,7 @@
   <name>camera</name>
   <version>0.0.1</version>
   <description> Package for camera </description>
-  <maintainer email="gordey.skor@mail.ru">root</maintainer>
+  <maintainer email="gordey.skor@mail.ru">Skorobogatov Gordei</maintainer>
   <license>TODO: License declaration</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>

@@ -1,5 +1,15 @@
 #include <camera/camera_calibration.hpp>
 
+void print_manual(bool less) {
+    if (less) {
+        std::cout << "Error: the following arguments are required: path_to_images\n";
+    } else {
+        std::cout << "Error: too many arguments\n";
+    }
+    std::cout
+        << "Usage: ros2 run camera camera_calibration path_to_images [path_to_calibration_file]\n";
+}
+
 bool export_camera_calibration(
     std::string file_path, cv::Matx33f& camera_matrix, cv::Vec<float, 5>& distance_coefficients) {
     std::ofstream output_file(file_path);
@@ -8,33 +18,59 @@ bool export_camera_calibration(
         return false;
     }
 
-    size_t rows = camera_matrix.rows;
-    size_t columns = camera_matrix.cols;
+    YAML::Emitter output;
 
-    for (size_t i = 0; i < rows; i++) {
-        for (size_t j = 0; j < columns; j++) {
-            float value = camera_matrix(i, j);
-            output_file << value << std::endl;
+    output << YAML::BeginMap;
+
+    output << YAML::Key << "camera_matrix";
+    output << YAML::Value << YAML::BeginSeq;
+    for (int i = 0; i < 3; ++i) {
+        for (int j = 0; j < 3; ++j) {
+            output << camera_matrix(i, j);
         }
     }
+    output << YAML::EndSeq;
 
-    rows = distance_coefficients.rows;
-
-    for (size_t i = 0; i < rows; i++) {
-        float value = distance_coefficients[i];
-        output_file << value << std::endl;
+    output << YAML::Key << "distance_coefficients";
+    output << YAML::Value << YAML::BeginSeq;
+    for (int i = 0; i < 5; ++i) {
+        output << distance_coefficients[i];
     }
+    output << YAML::EndSeq;
 
+    output << YAML::EndMap;
+
+    output_file << output.c_str();
     output_file.close();
+
     return true;
 }
 
 int main(int argc, char** argv) {
-    (void)argc;
-    (void)argv;
+    std::string path_to_images;
+    std::string path_to_calibration_file = "/wbb/calibration/calibration_params.yaml";
+
+    if (argc <= 1) {
+        print_manual(true);
+        RCLCPP_ERROR(
+            rclcpp::get_logger("CameraCalibration"), "Not enough arguments for calibration");
+        return -1;
+    }
+
+    if (argc >= 2) {
+        path_to_images = argv[1];
+    }
+
+    if (argc == 3) {
+        path_to_calibration_file = argv[2];
+    } else if (argc > 3) {
+        print_manual(false);
+        RCLCPP_ERROR(rclcpp::get_logger("CameraCalibration"), "Too many arguments for calibration");
+        return -1;
+    }
 
     std::vector<cv::String> file_names;
-    cv::glob(PATH_TO_IMAGES, file_names, false);
+    cv::glob(path_to_images + "/*.png", file_names, false);
 
     std::vector<std::vector<cv::Point2f>> image_corners_coords(file_names.size());
     std::vector<std::vector<cv::Point3f>> world_corners_coords;
@@ -46,11 +82,18 @@ int main(int argc, char** argv) {
         }
     }
 
+    cv::Size frame_size(0, 0);
+
     size_t cur_index = 0;
     for (auto const& f : file_names) {
         std::cout << std::string(f) << std::endl;
 
         cv::Mat cur_image = cv::imread(file_names[cur_index]);
+
+        if (frame_size == cv::Size(0, 0)) {
+            frame_size = cv::Size(cur_image.cols, cur_image.rows);
+        }
+
         cv::Mat gray_image;
 
         cv::cvtColor(cur_image, gray_image, cv::COLOR_RGB2GRAY);
@@ -83,7 +126,7 @@ int main(int argc, char** argv) {
     int flags = cv::CALIB_FIX_ASPECT_RATIO + cv::CALIB_FIX_K3 + cv::CALIB_ZERO_TANGENT_DIST +
                 cv::CALIB_FIX_PRINCIPAL_POINT;
 
-    RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "Calibrating...");
+    RCLCPP_INFO(rclcpp::get_logger("CameraCalibration"), "Calibrating...");
     cv::calibrateCamera(
         world_corners_coords,
         image_corners_coords,
@@ -94,11 +137,10 @@ int main(int argc, char** argv) {
         tvecs,
         flags);
 
-    if (export_camera_calibration(
-            "/wbb/calibration/camera_calibration_coefs", camera_matrix, distance_coefficients)) {    
-        RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "Matrices saved successfully");
+    if (export_camera_calibration(path_to_calibration_file, camera_matrix, distance_coefficients)) {
+        RCLCPP_INFO(rclcpp::get_logger("CameraCalibration"), "Matrices saved successfully");
     } else {
-        RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "Unable to export calibration");
+        RCLCPP_INFO(rclcpp::get_logger("CameraCalibration"), "Unable to export calibration");
         return -1;
     }
 
