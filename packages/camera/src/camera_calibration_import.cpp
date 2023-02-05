@@ -1,39 +1,35 @@
-#include <camera/camera_calibration_import.hpp>
+#include <camera/params.h>
 
-CalibrationParams import_camera_calibration(std::string path) {
-    YAML::Node config;
-    try {
-        config = YAML::LoadFile(path);
-    } catch (...) {
-        RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Unable to open calibration file");
-        exit(1);
-    }
+#include <opencv2/core.hpp>
+#include <rclcpp/rclcpp.hpp>
+#include <yaml-cpp/yaml.h>
+
+static auto& logger() {
+  static auto logger = rclcpp::get_logger("CalibrationImport");
+  return logger;
+}
+
+IntrinsicCameraParameters import_camera_calibration(const std::string& path_to_yaml) {
+
+    YAML::Node config = YAML::LoadFile(path_to_yaml);
+    RCLCPP_INFO(logger(), "Calibration file opened successfully");
 
     cv::Matx33f camera_matrix;
-    cv::Vec<float, 5> distance_coefficients;
-    if (config["camera_matrix"]) {
-        std::vector<float> values = config["camera_matrix"].as<std::vector<float>>();
+    cv::Vec<float, 5> distorsion;
+
+    std::vector<float> camera_matrix_values = config["camera_matrix"].as<std::vector<float>>();
         for (size_t i = 0; i < 3; ++i) {
             for (size_t j = 0; j < 3; ++j) {
-                camera_matrix(i, j) = values[i * 3 + j];
+                camera_matrix(i, j) = camera_matrix_values[i * 3 + j];
             }
         }
-        RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "Camera matrix imported successfully");
-    } else {
-        RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Unable to import camera matrix");
-        exit(1);
-    }
+    RCLCPP_INFO(logger(), "Camera matrix imported successfully");
 
-    if (config["distance_coefficients"]) {
-        std::vector<float> values = config["distance_coefficients"].as<std::vector<float>>();
+    std::vector<float> distorsion_values = config["distorsion"].as<std::vector<float>>();
         for (size_t i = 0; i < 5; ++i) {
-            distance_coefficients[i] = values[i];
+            distorsion[i] = distorsion_values[i];
         }
-        RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "Distance coefficients imported successfully");
-    } else {
-        RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Unable to import camera matrix");
-        exit(1);
-    }
+    RCLCPP_INFO(logger(), "Distorsion coefficients imported successfully");
 
-    return CalibrationParams(camera_matrix, distance_coefficients);
+    return IntrinsicCameraParameters(camera_matrix, distorsion);
 }
