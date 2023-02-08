@@ -3,12 +3,20 @@ launch:
     name: "calibration_params_path"
     default: "$(find-pkg-share camera)/config/calibration_params.yaml"
 - arg:
-    name: "camera_timeout"
+    name: "camera_frequency"
     default: "100"
+- arg:
+    name: "frame_width"
+    default: "1280"
+- arg:
+    name: "frame_height"
+    default: "720"
 - node:
     pkg: "camera"
     exec: "camera"
     name: "camera"
     param:
     - {name: "calibration_params", value: "$(var calibration_params_path)"}
-    - {name: "camera_timeout", value: 100}
+    - {name: "camera_frequency", value: 100}
+    - {name: "frame_width", value: 1280}
+    - {name: "frame_height", value: 720}

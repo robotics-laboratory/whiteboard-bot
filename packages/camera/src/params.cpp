@@ -2,13 +2,18 @@
 
 #include <rclcpp/rclcpp.hpp>
 
-static auto& logger() {
+cv::Size pattern_size(9, 6);  // Amount of cells on each side of chessboard
+int board_size[2] = {pattern_size.width + 1, pattern_size.height + 1};
+
+namespace {
+auto& logger() {
     static auto logger = rclcpp::get_logger("CameraCalibration");
     return logger;
 }
+}  // namespace
 
-IntrinsicCameraParameters calirate(const std::vector<cv::String>& calibrate) {
-    std::vector<std::vector<cv::Point2f>> image_corners_coords(calibrate.size());
+IntrinsicCameraParameters calirate(const std::vector<cv::String>& names) {
+    std::vector<std::vector<cv::Point2f>> image_corners_coords(names.size());
     std::vector<std::vector<cv::Point3f>> world_corners_coords;
 
     std::vector<cv::Point3f> sq_points;
@@ -20,17 +25,18 @@ IntrinsicCameraParameters calirate(const std::vector<cv::String>& calibrate) {
 
     cv::Size frame_size(0, 0);
 
-    size_t cur_index = 0;
-    for (auto const& f : calibrate) {
-        RCLCPP_DEBUG(logger(), "Image is processing now");
+    for (size_t i = 0; i < names.size(); ++i) {
+        const auto& name = names[i];
 
-        cv::Mat cur_image = cv::imread(f);
+        RCLCPP_DEBUG(logger(), "Image: %s", name.c_str());
 
-        if (!cur_index) {
+        cv::Mat cur_image = cv::imread(name);
+
+        if (!i) {
             frame_size = cv::Size(cur_image.cols, cur_image.rows);
         } else if (frame_size != cv::Size(cur_image.cols, cur_image.rows)) {
-            RCLCPP_ERROR(logger(), "Image has different resolution");
-            exit(-1);
+            RCLCPP_ERROR(logger(), "Image %s has different resolution", name.c_str());
+            throw std::runtime_error("Image has different resolution");
         }
 
         cv::Mat gray_image;
@@ -39,20 +45,21 @@ IntrinsicCameraParameters calirate(const std::vector<cv::String>& calibrate) {
         bool is_pattern_found = cv::findChessboardCorners(
             gray_image,
             pattern_size,
-            image_corners_coords[cur_index],
+            image_corners_coords[i],
             cv::CALIB_CB_ADAPTIVE_THRESH + cv::CALIB_CB_NORMALIZE_IMAGE + cv::CALIB_CB_FAST_CHECK);
 
         if (is_pattern_found) {
             cv::cornerSubPix(
                 gray_image,
-                image_corners_coords[cur_index],
+                image_corners_coords[i],
                 cv::Size(11, 11),
                 cv::Size(-1, -1),
                 cv::TermCriteria(cv::TermCriteria::EPS + cv::TermCriteria::MAX_ITER, 30, 0.1));
             world_corners_coords.push_back(sq_points);
+        } else {
+            RCLCPP_ERROR(logger(), "Unable find chessboard on image %s", name.c_str());
+            throw std::runtime_error("Unable to find chessboard on image");
         }
-
-        ++cur_index;
     }
 
     IntrinsicCameraParameters params(cv::Matx33f::eye(), cv::Vec<float, 5>(0, 0, 0, 0, 0));

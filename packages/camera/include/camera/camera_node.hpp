@@ -3,10 +3,11 @@
 #include <camera/params.h>
 
 #include <cv_bridge/cv_bridge.h>
-#include <memory>
 #include <opencv2/aruco.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/compressed_image.hpp>
+
+#include <memory>
 
 class CameraNode : public rclcpp::Node {
   public:

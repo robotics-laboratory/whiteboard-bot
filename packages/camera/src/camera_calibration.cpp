@@ -8,10 +8,12 @@ void print_manual() {
     std::cout << "Usage: ./camera_calibration path_to_images path_to_calibration_file\n";
 }
 
-static auto& logger() {
+namespace {
+auto& logger() {
     static auto logger = rclcpp::get_logger("CameraCalibration");
     return logger;
 }
+}  // namespace
 
 void export_camera_calibration(
     const std::string& path_to_yaml, const IntrinsicCameraParameters& params) {
@@ -59,10 +61,10 @@ int main(int argc, char** argv) {
     std::string path_to_images = argv[1];
     std::string path_to_calibration_file = argv[2];
 
-    std::vector<cv::String> calibrate;
-    cv::glob(path_to_images + "/*.png", calibrate, false);
+    std::vector<cv::String> names;
+    cv::glob(path_to_images + "/*.png", names, false);
 
-    IntrinsicCameraParameters params = calirate(calibrate);
+    IntrinsicCameraParameters params = calirate(names);
     RCLCPP_INFO(logger(), "Calibrated successfully");
 
     export_camera_calibration(path_to_calibration_file, params);

@@ -1,7 +1,8 @@
 #include <camera/camera_node.hpp>
 
-#include <chrono>
 #include <std_msgs/msg/header.hpp>
+
+#include <chrono>
 #include <stdio.h>
 
 CameraNode::CameraNode() : Node("CameraNode") {
@@ -9,9 +10,17 @@ CameraNode::CameraNode() : Node("CameraNode") {
 
     if (!camera_.isOpened()) {
         RCLCPP_ERROR(this->get_logger(), "Unable to open the camera");
-        exit(-1);
+        throw std::runtime_error("Unable to open the camera");
     }
     RCLCPP_INFO(this->get_logger(), "Camera opened successfully");
+
+    int width = this->declare_parameter<int>("frame_width", 1280);
+    int height = this->declare_parameter<int>("frame_height", 720);
+
+    camera_.set(cv::CAP_PROP_FRAME_WIDTH, width);
+    camera_.set(cv::CAP_PROP_FRAME_HEIGHT, height);
+
+    frame_size_ = cv::Size(width, height);
 
     std::string path_to_calibration_file = this->declare_parameter<std::string>(
         "calibration_params_path", "/wbb/packages/camera/config/calibration.yaml");
@@ -21,16 +30,15 @@ CameraNode::CameraNode() : Node("CameraNode") {
         this->create_publisher<sensor_msgs::msg::CompressedImage>("camera/compressed", 10);
     image_publisher_ = this->create_publisher<sensor_msgs::msg::Image>("camera/raw", 10);
 
-    auto camera_timeout =
-        std::chrono::milliseconds(this->declare_parameter<long int>("camera_timeout", 100));
-    timer_ =
-        this->create_wall_timer(camera_timeout, std::bind(&CameraNode::handleCameraOnTimer, this));
+    auto camera_frequency =
+        std::chrono::milliseconds(this->declare_parameter<int>("camera_frequency", 100));
+    timer_ = this->create_wall_timer(
+        camera_frequency, std::bind(&CameraNode::handleCameraOnTimer, this));
 }
 
 cv::Mat CameraNode::getImage() {
     cv::Mat raw_image;
     camera_.read(raw_image);
-    frame_size_ = cv::Size(raw_image.cols, raw_image.rows);
     return raw_image;
 }
 
@@ -59,12 +67,12 @@ void CameraNode::tryUpdateHomography(const cv::Mat& undistorted_image) {
     std::vector<std::vector<cv::Point2f>> corners;
     cv::aruco::detectMarkers(undistorted_image, aruco_markers_dict_, corners, ids);
 
-    if (ids.size() != 4) {
+    if (id_corners_marker.size() != 4) {
         return;
     }
 
     RCLCPP_DEBUG(this->get_logger(), "Starting recalculating of homography matrix");
-
+    
     std::vector<std::pair<int, std::vector<cv::Point2f>>> id_corners_marker;
 
     for (size_t i = 0; i < ids.size(); ++i) {
@@ -77,9 +85,10 @@ void CameraNode::tryUpdateHomography(const cv::Mat& undistorted_image) {
 
     std::vector<cv::Point2f> src_vertices;
 
-    for (size_t i = 0; i < ids.size(); ++i) {
+    for (size_t i = 0; i < id_corners_marker.size(); ++i) {
         src_vertices.push_back(id_corners_marker[i].second[i]);
     }
+
     std::vector<cv::Point2f> dst_vertices = {
         cv::Point(0, 0),
         cv::Point(frame_size_.width - 1, 0),
