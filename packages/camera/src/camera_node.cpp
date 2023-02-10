@@ -67,7 +67,7 @@ void CameraNode::tryUpdateHomography(const cv::Mat& undistorted_image) {
     std::vector<std::vector<cv::Point2f>> corners;
     cv::aruco::detectMarkers(undistorted_image, aruco_markers_dict_, corners, ids);
 
-    if (id_corners_marker.size() != 4) {
+    if (ids.size() != 4) {
         return;
     }
 
