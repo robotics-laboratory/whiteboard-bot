@@ -16,7 +16,7 @@ class CameraNode : public rclcpp::Node {
   private:
     void handleCameraOnTimer();
     cv::Mat getImage();
-    cv::Mat removeDistorsion(const cv::Mat& raw_image);
+    cv::Mat removeDistortion(const cv::Mat& raw_image);
     void tryUpdateHomography(const cv::Mat& undistorted_image);
     cv::Mat warp(const cv::Mat& undistorted_image);
     void publisRawImage(const cv::Mat& warped_image);

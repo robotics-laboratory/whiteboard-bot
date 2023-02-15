@@ -1,6 +1,8 @@
 #include <camera/params.h>
 
+#include <opencv2/core.hpp>
 #include <rclcpp/rclcpp.hpp>
+#include <yaml-cpp/yaml.h>
 
 cv::Size pattern_size(9, 6);  // Amount of cells on each side of chessboard
 int board_size[2] = {pattern_size.width + 1, pattern_size.height + 1};
@@ -12,7 +14,7 @@ auto& logger() {
 }
 }  // namespace
 
-IntrinsicCameraParameters calirate(const std::vector<cv::String>& names) {
+IntrinsicCameraParameters calibrate(const std::vector<cv::String>& names) {
     std::vector<std::vector<cv::Point2f>> image_corners_coords(names.size());
     std::vector<std::vector<cv::Point3f>> world_corners_coords;
 
@@ -30,7 +32,7 @@ IntrinsicCameraParameters calirate(const std::vector<cv::String>& names) {
 
         RCLCPP_DEBUG(logger(), "Image: %s", name.c_str());
 
-        cv::Mat cur_image = cv::imread(name);
+        const cv::Mat cur_image = cv::imread(name);
 
         if (!i) {
             frame_size = cv::Size(cur_image.cols, cur_image.rows);
@@ -42,7 +44,7 @@ IntrinsicCameraParameters calirate(const std::vector<cv::String>& names) {
         cv::Mat gray_image;
         cv::cvtColor(cur_image, gray_image, cv::COLOR_RGB2GRAY);
 
-        bool is_pattern_found = cv::findChessboardCorners(
+        const bool is_pattern_found = cv::findChessboardCorners(
             gray_image,
             pattern_size,
             image_corners_coords[i],
@@ -75,10 +77,68 @@ IntrinsicCameraParameters calirate(const std::vector<cv::String>& names) {
         image_corners_coords,
         frame_size,
         params.camera_matrix,
-        params.distorsion,
+        params.distortion,
         rvecs,
         tvecs,
         flags);
 
     return params;
+}
+
+IntrinsicCameraParameters importCameraCalibration(const std::string& path_to_yaml) {
+    const YAML::Node config = YAML::LoadFile(path_to_yaml);
+
+    cv::Matx33f camera_matrix;
+    cv::Vec<float, 5> distortion;
+
+    const std::vector<float> camera_matrix_values =
+        config["camera_matrix"].as<std::vector<float>>();
+    for (size_t i = 0; i < 3; ++i) {
+        for (size_t j = 0; j < 3; ++j) {
+            camera_matrix(i, j) = camera_matrix_values[i * 3 + j];
+        }
+    }
+
+    const std::vector<float> distortion_values = config["distortion"].as<std::vector<float>>();
+    for (size_t i = 0; i < 5; ++i) {
+        distortion[i] = distortion_values[i];
+    }
+
+    return IntrinsicCameraParameters(camera_matrix, distortion);
+}
+
+void exportCameraCalibration(
+    const std::string& path_to_yaml, const IntrinsicCameraParameters& params) {
+    std::ofstream output_file(path_to_yaml);
+
+    if (!output_file) {
+        RCLCPP_ERROR(logger(), "Unable to open output file");
+        return;
+    }
+
+    YAML::Emitter output;
+
+    output << YAML::BeginMap;
+
+    output << YAML::Key << "camera_matrix";
+    output << YAML::Value << YAML::BeginSeq;
+    for (int i = 0; i < 3; ++i) {
+        for (int j = 0; j < 3; ++j) {
+            output << params.camera_matrix(i, j);
+        }
+    }
+
+    output << YAML::EndSeq;
+
+    output << YAML::Key << "distortion";
+    output << YAML::Value << YAML::BeginSeq;
+    for (int i = 0; i < 5; ++i) {
+        output << params.distortion[i];
+    }
+    output << YAML::EndSeq;
+
+    output << YAML::EndMap;
+
+    output_file << output.c_str();
+    output_file.close();
 }
