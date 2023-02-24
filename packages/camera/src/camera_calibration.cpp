@@ -1,18 +1,20 @@
-#include <camera/params.h>
+#include "camera/params.h"
 
 #include <opencv2/core.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <yaml-cpp/yaml.h>
 
+namespace {
+
 void print_manual() {
     std::cout << "Usage: camera_calibration path_to_images path_to_calibration_file\n";
 }
 
-namespace {
 auto& logger() {
     static auto logger = rclcpp::get_logger("CameraCalibration");
     return logger;
 }
+
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -28,10 +30,10 @@ int main(int argc, char** argv) {
     std::vector<cv::String> names;
     cv::glob(path_to_images + "/*.png", names, false);
 
-    const IntrinsicCameraParameters params = calibrate(names);
+    const auto params = wbb::calibrate(names);
     RCLCPP_INFO(logger(), "Calibrated successfully");
 
-    exportCameraCalibration(path_to_calibration_file, params);
+    wbb::exportCameraCalibration(path_to_calibration_file, params);
     RCLCPP_INFO(logger(), "Matrices saved successfully");
 
     return 0;

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <camera/params.h>
+#include "camera/params.h"
 
 #include <cv_bridge/cv_bridge.h>
 #include <opencv2/aruco.hpp>
@@ -8,6 +8,8 @@
 #include <sensor_msgs/msg/compressed_image.hpp>
 
 #include <memory>
+
+namespace wbb {
 
 class CameraNode : public rclcpp::Node {
   public:
@@ -27,9 +29,12 @@ class CameraNode : public rclcpp::Node {
     rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr image_publisher_;
 
     cv::VideoCapture camera_;
-    cv::Size frame_size_;
     cv::Ptr<cv::aruco::Dictionary> aruco_markers_dict_ =
         cv::aruco::getPredefinedDictionary(cv::aruco::DICT_6X6_250);
+
+    cv::Size frame_size_;
     cv::Matx33f homography_matrix_{cv::Matx33f::eye()};
     IntrinsicCameraParameters calibration_params_;
 };
+
+}  // namespace wbb

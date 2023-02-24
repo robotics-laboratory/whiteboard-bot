@@ -1,8 +1,6 @@
 cmake_minimum_required(VERSION 3.8)
 project(camera)
 
-set(CMAKE_CXX_STANDARD 17)
-
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
@@ -12,6 +10,7 @@ find_package(ament_cmake REQUIRED)
 find_package(cv_bridge REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
+find_package(std_msgs REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(yaml_cpp_vendor REQUIRED)
 
@@ -29,7 +28,7 @@ target_include_directories(camera PUBLIC
 
 ament_target_dependencies(camera_calibration OpenCV rclcpp yaml_cpp_vendor)
 
-ament_target_dependencies(camera cv_bridge OpenCV rclcpp sensor_msgs yaml_cpp_vendor)
+ament_target_dependencies(camera cv_bridge OpenCV rclcpp sensor_msgs std_msgs yaml_cpp_vendor)
 
 install(TARGETS camera_calibration camera
   DESTINATION lib/${PROJECT_NAME})

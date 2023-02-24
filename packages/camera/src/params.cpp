@@ -4,14 +4,18 @@
 #include <rclcpp/rclcpp.hpp>
 #include <yaml-cpp/yaml.h>
 
-cv::Size pattern_size(9, 6);  // Amount of cells on each side of chessboard
-int board_size[2] = {pattern_size.width + 1, pattern_size.height + 1};
+namespace wbb {
 
 namespace {
+
+const cv::Size pattern_size(9, 6);  // Amount of cells on each side of chessboard
+const int board_size[2] = {pattern_size.width + 1, pattern_size.height + 1};
+
 auto& logger() {
     static auto logger = rclcpp::get_logger("CameraCalibration");
     return logger;
 }
+
 }  // namespace
 
 IntrinsicCameraParameters calibrate(const std::vector<cv::String>& names) {
@@ -142,3 +146,5 @@ void exportCameraCalibration(
     output_file << output.c_str();
     output_file.close();
 }
+
+}  // namespace wbb

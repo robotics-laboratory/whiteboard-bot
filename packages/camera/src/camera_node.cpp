@@ -1,9 +1,11 @@
-#include <camera/camera_node.hpp>
+#include "camera/camera_node.h"
 
 #include <std_msgs/msg/header.hpp>
 
 #include <chrono>
 #include <stdio.h>
+
+namespace wbb {
 
 CameraNode::CameraNode() : Node("CameraNode") {
     camera_.open(0);
@@ -130,3 +132,5 @@ void CameraNode::handleCameraOnTimer() {
     publisRawImage(warped_image);
     publishPreview(warped_image);
 }
+
+}  // namespace wbb
