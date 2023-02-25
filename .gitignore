@@ -1,0 +1,6 @@
+# Sensitive env variables
+secrets.ini
+
+.pio
+
+.vscode

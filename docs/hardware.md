@@ -4,11 +4,15 @@
 
 * Platformio framework (platformio-cli)
 
+## Environment
+
+Open `hardware/wbb/secrets.ini` and insert WiFi SSID and password
+
 ## Build
 
 `cd hardware/wbb`
 
-`pio run --target upload --upload_port /dev/ttyUSB0` - Build and upload the firmware (may be on another port)
+`pio run --target upload --upload-port /dev/ttyUSB0` - Build and upload the firmware (may be on another port)
 
 ## Troubleshooting
 
