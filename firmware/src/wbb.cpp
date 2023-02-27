@@ -13,7 +13,7 @@
 #define MAX_SPEED_A 255
 #define MAX_SPEED_B 255
 
-#define MDNS_DEVICE "wbb"
+#define MDNS_DEVICE "wbb-bot"
 #define SERVICE_NAME "ws-control"
 #define SERVICE_PROTOCOL "tcp"
 #define SERVICE_PORT 80

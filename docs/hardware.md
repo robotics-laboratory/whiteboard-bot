@@ -6,11 +6,9 @@
 
 ## Environment
 
-Open `hardware/wbb/.env` and insert WiFi SSID and password
+Open `.env` file and insert WiFi SSID and password
 
 ## Build
-
-`cd hardware/wbb`
 
 `source ./.env`
 
