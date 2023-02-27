@@ -1,5 +1,5 @@
 # Sensitive env variables
-secrets.ini
+.env
 
 .pio
 

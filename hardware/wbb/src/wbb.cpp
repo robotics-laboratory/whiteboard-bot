@@ -1,6 +1,7 @@
 #include <WiFi.h>
 #include <AsyncTCP.h>
 #include <ESPAsyncWebServer.h>
+#include "ESPmDNS.h"
 
 #define IN1 33 // 1
 #define IN2 32 // 1
@@ -11,6 +12,11 @@
 
 #define MAX_SPEED_A 255
 #define MAX_SPEED_B 255
+
+#define MDNS_DEVICE "wbb"
+#define SERVICE_NAME "ws-control"
+#define SERVICE_PROTOCOL "tcp"
+#define SERVICE_PORT 80
 
 // Passed as compilation parameter
 const char* ssid = WIFI_SSID;
@@ -165,6 +171,11 @@ void setup()
         delay(1000);
     }
     Serial.println("Wifi connected");
+
+    if (!MDNS.begin(MDNS_DEVICE))
+        Serial.println("Could not initialize MDNS");
+    else
+        MDNS.addService(SERVICE_NAME, SERVICE_PROTOCOL, SERVICE_PORT);
 
     ws.onEvent(event);
     server.addHandler(&ws);
