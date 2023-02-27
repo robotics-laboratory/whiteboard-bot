@@ -6,7 +6,7 @@
 
 ## Environment
 
-Open `hardware/wbb/secrets.ini` and insert WiFi SSID and password
+Open `hardware/wbb/.env` and insert WiFi SSID and password
 
 ## Build
 
