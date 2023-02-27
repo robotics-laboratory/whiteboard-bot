@@ -12,6 +12,8 @@ Open `hardware/wbb/.env` and insert WiFi SSID and password
 
 `cd hardware/wbb`
 
+`source ./.env`
+
 `pio run --target upload --upload-port /dev/ttyUSB0` - Build and upload the firmware (may be on another port)
 
 ## Troubleshooting
