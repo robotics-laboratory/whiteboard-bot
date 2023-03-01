@@ -10,8 +10,6 @@ Open `.env` file and insert WiFi SSID and password
 
 ## Build
 
-`source ./.env`
-
 `pio run --target upload --upload-port /dev/ttyUSB0` - Build and upload the firmware (may be on another port)
 
 ## Troubleshooting
