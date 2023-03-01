@@ -10,41 +10,12 @@ Open `.env` file and insert WiFi SSID and password
 
 ## Build
 
-`pio run --target upload --upload-port /dev/ttyUSB0` - Build and upload the firmware (may be on another port)
+`pio run --target upload` - Build and upload the firmware (may be on another port)
 
 ## Troubleshooting
 
 #### In case of permission denied errors, you need to install board udev rules
 
-`curl -fsSL https://raw.githubusercontent.com/platformio/platformio-core/develop/platformio/assets/system/99-platformio-udev.rules`
-
-For most of the systems:
-
-`sudo cp ./99-platformio-udev.rules /etc/udev/rules.d/99-platformio-udev.rules`
-
-For systems with udev rules placed in /lib/udev/rules.d:
-
-`sudo cp ./99-platformio-udev.rules /lib/udev/rules.d/99-platformio-udev.rules`
-
-```
-sudo udevadm control --reload-rules
-sudo udevadm trigger
-```
-
-Ubuntu/Debian:
-
-```
-sudo usermod -a -G dialout $USER
-sudo usermod -a -G plugdev $USER
-```
-
-Arch:
-
-```
-sudo usermod -a -G uucp $USER
-sudo usermod -a -G lock $USER
-```
-
-Logout and reconnect the board to apply the changes
+[Link to the documentation](https://docs.platformio.org/en/stable/core/installation/udev-rules.html)
 
 A quick fix would be to `sudo chown $USER /dev/ttyUSB0`, but you would need to execute it each time you connect the board.
