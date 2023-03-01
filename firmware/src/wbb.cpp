@@ -18,6 +18,9 @@
 #define SERVICE_PROTOCOL "tcp"
 #define SERVICE_PORT 80
 
+#define WS_TIMEOUT_MS 200
+hw_timer_t *ws_timeout = NULL;
+
 // Passed as compilation parameter
 const char* ssid = WIFI_SSID;
 const char* password = WIFI_PASSWD;
@@ -41,6 +44,11 @@ enum Direction
 };
 
 Direction dir = STOP, cur_dir = STOP;
+
+void IRAM_ATTR onTimeout()
+{
+    dir = Direction::STOP;
+}
 
 void go(bool dir1, bool dir2, bool dir3, bool dir4)
 {
@@ -117,6 +125,14 @@ void event(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType ty
                     return;
                 
                 rotation = atoi(tok) - 90;
+
+                if (code <= 1)
+                {
+                    timerAlarmDisable(ws_timeout);
+                    timerAlarmEnable(ws_timeout);
+                }
+                if (code == 2)
+                    timerAlarmDisable(ws_timeout);
             }
         }
     }
@@ -181,6 +197,10 @@ void setup()
     server.addHandler(&ws);
 
     server.begin();
+
+    ws_timeout = timerBegin(0, 80, true);
+    timerAttachInterrupt(ws_timeout, &onTimeout, true);
+    timerAlarmWrite(ws_timeout, WS_TIMEOUT_MS*1000, true);
 }
 
 void loop()
