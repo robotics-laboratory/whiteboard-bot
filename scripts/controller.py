@@ -40,8 +40,9 @@ def init_listener():
     loop = asyncio.get_event_loop()
 
     def press_event(key):
-        if str(key) in list(keys_bind):
-            loop.call_soon_threadsafe(queue.put_nowait, keys_bind[str(key)])
+        action = keys_bind.get(str(key))
+        if action is not None:
+            loop.call_soon_threadsafe(queue.put_nowait, action)
 
     def release_event(key):
         loop.call_soon_threadsafe(queue.put_nowait, "2")
