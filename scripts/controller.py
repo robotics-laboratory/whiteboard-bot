@@ -2,6 +2,7 @@ import websockets
 import asyncio
 from pynput import keyboard
 import sys
+import argparse
 
 class Controller:
     def __init__(self):
@@ -55,8 +56,8 @@ def init_listener():
 
     return queue
 
-async def main():
-    ip = sys.argv[1]
+async def main(args):
+    ip = args.ip
     await ctr.init_ip(ip)
 
     queue = init_listener()
@@ -65,5 +66,9 @@ async def main():
         await ctr.send(msg)
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    parser = argparse.ArgumentParser(prog="controller.py", description="Manually control the whiteboard bot")
+    parser.add_argument('-i', '--ip', required=True, help="Bot IP address")
+    args = parser.parse_args()
+
+    asyncio.run(main(args))
 
