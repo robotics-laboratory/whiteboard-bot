@@ -12,11 +12,16 @@ struct IntrinsicCameraParameters {
         , distortion(distortion)
     {}
 
-
     IntrinsicCameraParameters() = default;
 
     cv::Matx33f camera_matrix = cv::Matx33f::eye();
     cv::Vec<float, 5> distortion = {0, 0, 0, 0, 0};
+};
+
+struct BotPose {
+    int x = 0;
+    int y = 0;
+    float theta = 0.;
 };
 
 IntrinsicCameraParameters importCameraCalibration(const std::string& path_to_yaml);

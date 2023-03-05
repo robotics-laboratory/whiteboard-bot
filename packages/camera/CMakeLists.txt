@@ -8,15 +8,18 @@ endif()
 # find dependencies
 find_package(ament_cmake REQUIRED)
 find_package(cv_bridge REQUIRED)
+find_package(OpenCV REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
-find_package(OpenCV REQUIRED)
+find_package(visualization_msgs REQUIRED)
+find_package(foxglove_msgs REQUIRED)
+find_package(wbb_interfaces)
 find_package(yaml_cpp_vendor REQUIRED)
 
 add_executable(camera_calibration src/camera_calibration.cpp src/params.cpp)
 
-add_executable(camera src/main.cpp src/camera_node.cpp src/params.cpp)
+add_executable(camera src/main.cpp src/camera_node.cpp src/params.cpp src/messages_helper.cpp)
 
 target_include_directories(camera_calibration PUBLIC
   "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
@@ -28,7 +31,7 @@ target_include_directories(camera PUBLIC
 
 ament_target_dependencies(camera_calibration OpenCV rclcpp yaml_cpp_vendor)
 
-ament_target_dependencies(camera cv_bridge OpenCV rclcpp sensor_msgs std_msgs yaml_cpp_vendor)
+ament_target_dependencies(camera cv_bridge OpenCV rclcpp sensor_msgs std_msgs wbb_interfaces yaml_cpp_vendor visualization_msgs foxglove_msgs)
 
 install(TARGETS camera_calibration camera
   DESTINATION lib/${PROJECT_NAME})
