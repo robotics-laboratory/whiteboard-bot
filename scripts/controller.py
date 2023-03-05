@@ -1,16 +1,25 @@
 import argparse
 import asyncio
 import sys
+from enum import Enum
 
 import websockets
 from pynput import keyboard
+
+
+class Dir(Enum):
+    FWD = 0
+    BACK = 1
+    STOP = 2
+    LEFT = 3
+    RIGHT = 4
 
 
 class Controller:
     def __init__(self):
         self.direction = 0
         self.increment = 10
-        self.last_state = "0"
+        self.last_state = Dir.FWD
 
     def rotate(self, d):
         if d == 1 and self.direction < 90:
@@ -24,20 +33,25 @@ class Controller:
         print("Connected")
 
     async def send(self, msg):
-        if msg == "left":
+        if msg == Dir.LEFT:
             self.rotate(-1)
             msg = self.last_state
-        elif msg == "right":
+        elif msg == Dir.RIGHT:
             self.rotate(1)
             msg = self.last_state
 
         self.last_state = msg
-        await self.ws.send(msg + ";" + str(self.direction + 90) + ";")
+        await self.ws.send(str(msg) + ";" + str(self.direction + 90) + ";")
 
 
 ctr = Controller()
 
-keys_bind = {"Key.left": "left", "Key.right": "right", "Key.up": "0", "Key.down": "1"}
+keys_bind = {
+    "Key.left": Dir.LEFT,
+    "Key.right": Dir.RIGHT,
+    "Key.up": Dir.FWD,
+    "Key.down": Dir.BACK,
+}
 
 
 def init_listener():
@@ -50,7 +64,7 @@ def init_listener():
             loop.call_soon_threadsafe(queue.put_nowait, action)
 
     def release_event(key):
-        loop.call_soon_threadsafe(queue.put_nowait, "2")
+        loop.call_soon_threadsafe(queue.put_nowait, Dir.STOP)
 
     listener = keyboard.Listener(on_press=press_event, on_release=release_event)
 

@@ -98,42 +98,42 @@ void smoothMovement()
 
 void event(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len)
 {
-    if (type == WS_EVT_DATA)
+    if (type != WS_EVT_DATA)
+        return;
+    
+    AwsFrameInfo *info = (AwsFrameInfo*)arg;
+    if (info->final && info->index == 0 && info->len == len)
     {
-        AwsFrameInfo *info = (AwsFrameInfo*)arg;
-        if (info->final && info->index == 0 && info->len == len)
+        data[len] = 0;
+        if (info->opcode == WS_TEXT)
         {
-            data[len] = 0;
-            if (info->opcode == WS_TEXT)
-            {
-                char* state = (char*)data;
+        char* state = (char*)data;
                 
-                char* tok = strtok(state, ";");
-                if (tok == NULL)
-                    return;
-                int code = tok[0] - '0';
+        char* tok = strtok(state, ";");
+        if (tok == NULL)
+            return;
+        int code = tok[0] - '0';
 
-                if (code >= 0 && code <= 2)
-                {
-                    dir = static_cast<Direction>(code);
-                }
-                else
-                    return;
+        if (code >= 0 && code <= 2)
+        {
+            dir = static_cast<Direction>(code);
+        }
+        else
+            return;
 
-                tok = strtok(NULL, ";");
-                if (tok == NULL)
-                    return;
+        tok = strtok(NULL, ";");
+        if (tok == NULL)
+            return;
                 
-                rotation = atoi(tok) - 90;
+        rotation = atoi(tok) - 90;
 
-                if (code <= 1)
-                {
-                    timerAlarmDisable(ws_timeout);
-                    timerAlarmEnable(ws_timeout);
-                }
-                if (code == 2)
-                    timerAlarmDisable(ws_timeout);
-            }
+        if (code <= 1)
+        {
+            timerAlarmDisable(ws_timeout);
+            timerAlarmEnable(ws_timeout);
+        }
+        if (code == 2)
+            timerAlarmDisable(ws_timeout);
         }
     }
 }
