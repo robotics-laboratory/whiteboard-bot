@@ -1,8 +1,10 @@
-import websockets
-import asyncio
-from pynput import keyboard
-import sys
 import argparse
+import asyncio
+import sys
+
+import websockets
+from pynput import keyboard
+
 
 class Controller:
     def __init__(self):
@@ -18,7 +20,7 @@ class Controller:
 
     async def init_ip(self, ip):
         print("Connecting...")
-        self.ws = await websockets.connect("wss://"+ip+"/ws", port=80, ssl=False)
+        self.ws = await websockets.connect("wss://" + ip + "/ws", port=80, ssl=False)
         print("Connected")
 
     async def send(self, msg):
@@ -32,9 +34,11 @@ class Controller:
         self.last_state = msg
         await self.ws.send(msg + ";" + str(self.direction + 90) + ";")
 
+
 ctr = Controller()
 
 keys_bind = {"Key.left": "left", "Key.right": "right", "Key.up": "0", "Key.down": "1"}
+
 
 def init_listener():
     queue = asyncio.Queue()
@@ -48,13 +52,12 @@ def init_listener():
     def release_event(key):
         loop.call_soon_threadsafe(queue.put_nowait, "2")
 
-    listener = keyboard.Listener(
-        on_press=press_event,
-        on_release=release_event)
-    
+    listener = keyboard.Listener(on_press=press_event, on_release=release_event)
+
     listener.start()
 
     return queue
+
 
 async def main(args):
     ip = args.ip
@@ -65,10 +68,12 @@ async def main(args):
         msg = await queue.get()
         await ctr.send(msg)
 
+
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(prog="controller.py", description="Manually control the whiteboard bot")
-    parser.add_argument('-i', '--ip', required=True, help="Bot IP address")
+    parser = argparse.ArgumentParser(
+        prog="controller.py", description="Manually control the whiteboard bot"
+    )
+    parser.add_argument("-i", "--ip", required=True, help="Bot IP address")
     args = parser.parse_args()
 
     asyncio.run(main(args))
-

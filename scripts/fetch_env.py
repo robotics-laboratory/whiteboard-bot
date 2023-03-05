@@ -15,7 +15,7 @@ config = dotenv_values(".env")
 flags = []
 
 for k, v in config.items():
-    flags.append("-D " + k + "=\'\"" + v + "\"\'")
+    flags.append("-D " + k + "='\"" + v + "\"'")
 
 print(flags)
 
