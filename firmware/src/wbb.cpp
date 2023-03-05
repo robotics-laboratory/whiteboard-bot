@@ -1,17 +1,20 @@
 #include <WiFi.h>
+#include <math.h>
 #include <AsyncTCP.h>
 #include <ESPAsyncWebServer.h>
 #include "ESPmDNS.h"
 
-#define IN1 33 // 1
-#define IN2 32 // 1
-#define IN3 26 // 2
-#define IN4 25 // 2
-#define ENA 27 // speed A
-#define ENB 14 // speed B
+#define IN1 33 // L298N IN1 pin
+#define IN2 32 // L298N IN2 pin
+#define IN3 26 // L298N IN3 pin
+#define IN4 25 // L298N IN4 pin
+#define ENA 27 // L298N speed for motor A
+#define ENB 14 // L298N speed for motor B
 
-#define MAX_SPEED_A 255
-#define MAX_SPEED_B 255
+#define MAX_SPEED_A 255 // Motor A speed limiter
+#define MAX_SPEED_B 255 // Motor B speed limiter
+
+#define MOTOR_SPINUP_TIME 1000 // Smoothly increasing/decreasing motor speed for x milliseconds
 
 #define MDNS_DEVICE "wbb-bot"
 #define SERVICE_NAME "ws-control"
@@ -33,8 +36,12 @@ bool fwd2 = true;
 bool fwd3 = true;
 bool fwd4 = true;
 int speed = 0;
+int target_speed = 0;
 
 int rotation = 0; // -90 - 90
+
+int spinup_delay = MOTOR_SPINUP_TIME / 255;
+unsigned long loop_time = 0;
 
 enum Direction
 {
@@ -43,11 +50,28 @@ enum Direction
     STOP = 2,
 };
 
-Direction dir = STOP, cur_dir = STOP;
+Direction dir = STOP;
+
+void setTargetSpeed()
+{
+    switch(dir)
+    {
+        case FWD:
+            target_speed = 255;
+            break;
+        case BACK:
+            target_speed = 255;
+            break;
+        case STOP:
+            target_speed = 255;
+            break;
+    }
+}
 
 void IRAM_ATTR onTimeout()
 {
     dir = Direction::STOP;
+    setTargetSpeed();
 }
 
 void go(bool dir1, bool dir2, bool dir3, bool dir4)
@@ -76,24 +100,22 @@ void switchState()
 
 void smoothMovement()
 {
-    if (cur_dir == dir)
-    {
-        if (dir == STOP)
-            return; // set speed to 0
-        
-        if (speed < 255)
-            speed++;
-        return;
-    }
-
+    // We need to update motors spin direction
     if (speed == 0)
     {
-        cur_dir = dir;
         switchState();
-        return;
     }
 
-    speed--;
+    if (speed < target_speed)
+    {
+        speed++;
+        return;
+    }
+    if (speed > target_speed)
+    {
+        speed--;
+        return;
+    }
 }
 
 void event(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len)
@@ -117,6 +139,7 @@ void event(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType ty
         if (code >= 0 && code <= 2)
         {
             dir = static_cast<Direction>(code);
+            setTargetSpeed();
         }
         else
             return;
@@ -157,8 +180,8 @@ void spinMotors()
     digitalWrite(IN2, fwd2);
     digitalWrite(IN3, fwd3);
     digitalWrite(IN4, fwd4);
-    analogWrite(ENA, mapMaxSpeed(speed * calcDirection(0), MAX_SPEED_A));
-    analogWrite(ENB, mapMaxSpeed(speed * calcDirection(1), MAX_SPEED_B));
+    analogWrite(ENA, mapMaxSpeed(abs(speed) * calcDirection(0), MAX_SPEED_A));
+    analogWrite(ENB, mapMaxSpeed(abs(speed) * calcDirection(1), MAX_SPEED_B));
 }
 
 void setup()
@@ -205,9 +228,12 @@ void setup()
 
 void loop()
 {
+    loop_time = millis();
     smoothMovement();
 
     spinMotors();
 
     ws.cleanupClients();
+
+    delay(max(0, spinup_delay - int(millis() - loop_time)));
 }
