@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
-project(wbb_interfaces)
+project(wbb_msgs)
 
 add_compile_options(-Wall -Wextra -Wpedantic -Werror)
 
@@ -10,8 +10,9 @@ find_package(rosidl_default_generators REQUIRED)
 
 rosidl_generate_interfaces(${PROJECT_NAME} 
   msg/ImagePose.msg
-  msg/ImageMarkerPose.msg
-  msg/ImageMarkerPoseArray.msg
+  msg/ImagePoint.msg
+  msg/ImageMarkerPos.msg
+  msg/ImageMarkerPosArray.msg
   DEPENDENCIES
   builtin_interfaces
   ADD_LINTER_TESTS

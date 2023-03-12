@@ -1,12 +1,11 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>wbb_interfaces</name>
-  <version>0.1.0</version>
-  <description>WBB interfaces package</description>
+  <name>wbb_msgs</name>
+  <version>0.0.0</version>
+  <description>WBB messages package</description>
   <maintainer email="gordey.skor@mail.ru">Skorobogatov Gordei</maintainer>
-  <license>TODO:
-    License declaration</license>
+  <license>MIT</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 
