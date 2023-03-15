@@ -2,21 +2,29 @@
 
 #include <wbb_msgs/msg/image_point.hpp>
 
-#include <rclcpp/rclcpp.hpp>
 #include <std_msgs/msg/header.hpp>
 
 #include <chrono>
 
 namespace wbb::msg {
 
+std_msgs::msg::Header getHeader(const rclcpp::Time& capturing_time) {
+    std_msgs::msg::Header header;
+    header.frame_id = "";
+    header.stamp = capturing_time;
+
+    return header;
+}
+
 visualization_msgs::msg::ImageMarker makeLineStrip(
-    int id, const std::vector<cv::Point2f>& coords, bool close) {
+    int id, const std::vector<cv::Point2f>& coords, const rclcpp::Time& capturing_time, bool close,
+    bool add) {
     visualization_msgs::msg::ImageMarker msg;
     geometry_msgs::msg::Point point;
 
     std_msgs::msg::ColorRGBA color;
-    color.r = 0.0;
-    color.g = 1.0;
+    color.r = 1.0;
+    color.g = 0.0;
     color.b = 0.0;
     color.a = 1.0;
 
@@ -32,37 +40,40 @@ visualization_msgs::msg::ImageMarker makeLineStrip(
         msg.points.push_back(point);
     }
 
-    msg.header = std_msgs::msg::Header();
-    msg.header.frame_id = "";
-    // msg.header.stamp = now();
+    msg.header = getHeader(capturing_time);
     msg.ns = "marker";
     msg.id = id;
     msg.type = visualization_msgs::msg::ImageMarker::LINE_STRIP;
-    msg.action = visualization_msgs::msg::ImageMarker::ADD;
+    if (add) {
+        msg.action = visualization_msgs::msg::ImageMarker::ADD;
+    } else {
+        msg.action = visualization_msgs::msg::ImageMarker::REMOVE;
+    }
     msg.outline_color = color;
-    msg.scale = 1;
-    msg.lifetime = rclcpp::Duration::from_seconds(0);
+    msg.scale = 2;
     return msg;
 }
 
 foxglove_msgs::msg::ImageMarkerArray makeLineStripArray(
-    const std::vector<std::vector<cv::Point2f>>& markers, bool close) {
+    int id, const std::vector<std::vector<cv::Point2f>>& markers,
+    const rclcpp::Time& capturing_time, bool close, bool add) {
     foxglove_msgs::msg::ImageMarkerArray msg;
 
     for (const auto& marker : markers) {
-        const auto marker_msg = makeLineStrip(0, marker, close);
+        const auto marker_msg = makeLineStrip(id, marker, capturing_time, close, add);
         msg.markers.push_back(marker_msg);
     }
 
     return msg;
 }
 
-wbb_msgs::msg::ImagePose toImagePose(const wbb::BotPose& pos) {
+wbb_msgs::msg::ImagePose toImagePose(const wbb::BotPose& pose, const rclcpp::Time& capturing_time) {
     wbb_msgs::msg::ImagePose msg;
 
-    msg.x = pos.x;
-    msg.y = pos.y;
-    msg.theta = pos.theta;
+    msg.header = getHeader(capturing_time);
+    msg.x = pose.x;
+    msg.y = pose.y;
+    msg.theta = pose.theta;
 
     return msg;
 }

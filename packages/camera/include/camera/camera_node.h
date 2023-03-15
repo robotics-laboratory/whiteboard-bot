@@ -17,8 +17,6 @@
 
 namespace wbb {
 
-using MarkersCoords = std::vector<std::vector<cv::Point2f>>;  // УБРАЬТЬ!!!
-
 class CameraNode : public rclcpp::Node {
   public:
     CameraNode();
@@ -27,39 +25,44 @@ class CameraNode : public rclcpp::Node {
     void handleCameraOnTimer();
     cv::Mat getImage();
     cv::Mat removeDistortion(const cv::Mat& raw_image);
-    DetectionResult detectMarkert(const cv::Mat& undistorted_image);
+    DetectionResult detectMarkers(const cv::Mat& undistorted_image);
     void tryUpdateHomography(const DetectionResult& detection);
     cv::Mat warp(const cv::Mat& undistorted_image);
     std::optional<BotPose> getBotPose(const std::optional<Marker>& ego);
     DetectionResult transform(const DetectionResult& detection);
 
-    void publishImage(const cv::Mat& warped_image);
+    void publishImage(const cv::Mat& warped_image, const rclcpp::Time& capturing_time);
     void publishImageCorners(const std::vector<Marker>& markers);
     void publishImageBorder(const std::vector<cv::Point2f>& border);
-    void publishRobotEgo(const std::optional<BotPose>& ego);
+    void publishRobotEgo(const std::optional<BotPose>& ego, const rclcpp::Time& capturing_time);
 
-    void publishPreview(const cv::Mat& warped_image);
-    void publishPreviewCorners(const std::vector<Marker>& markers);
-    void publishRobotBorder(const std::vector<cv::Point2f>& border);
+    void publishPreview(const cv::Mat& warped_image, const rclcpp::Time& capturing_time);
+    void publishPreviewCorners(
+        const std::vector<Marker>& markers, const rclcpp::Time& capturing_time);
+    void publishRobotBorder(
+        const std::vector<cv::Point2f>& border, const rclcpp::Time& capturing_time);
 
     std::vector<cv::Point2f> getBorder(const std::optional<Marker>& ego);
 
     rclcpp::TimerBase::SharedPtr timer_;
-    rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr image_publisher_;
-    rclcpp::Publisher<sensor_msgs::msg::CompressedImage>::SharedPtr preview_publisher_;
+    rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr image_publisher_ = nullptr;
+    rclcpp::Publisher<sensor_msgs::msg::CompressedImage>::SharedPtr preview_publisher_ = nullptr;
 
-    rclcpp::Publisher<wbb_msgs::msg::ImagePose>::SharedPtr robot_ego_publisher_;
-    rclcpp::Publisher<wbb_msgs::msg::ImageMarkerPosArray>::SharedPtr image_corners_publisher_;
-    rclcpp::Publisher<wbb_msgs::msg::ImageMarkerPos>::SharedPtr image_border_publisher_;
+    rclcpp::Publisher<wbb_msgs::msg::ImagePose>::SharedPtr robot_ego_publisher_ = nullptr;
+    rclcpp::Publisher<wbb_msgs::msg::ImageMarkerPosArray>::SharedPtr image_corners_publisher_ =
+        nullptr;
+    rclcpp::Publisher<wbb_msgs::msg::ImageMarkerPos>::SharedPtr robot_border_publisher_ = nullptr;
 
-    rclcpp::Publisher<foxglove_msgs::msg::ImageMarkerArray>::SharedPtr preview_corners_publisher_;
-    rclcpp::Publisher<visualization_msgs::msg::ImageMarker>::SharedPtr preview_border_publisher_;
+    rclcpp::Publisher<foxglove_msgs::msg::ImageMarkerArray>::SharedPtr preview_corners_publisher_ =
+        nullptr;
+    rclcpp::Publisher<visualization_msgs::msg::ImageMarker>::SharedPtr preview_border_publisher_ =
+        nullptr;
 
     cv::VideoCapture camera_;
     cv::Ptr<cv::aruco::Dictionary> aruco_markers_dict_ =
         cv::aruco::getPredefinedDictionary(cv::aruco::DICT_6X6_250);
 
-    cv::Size frame_size_;
+    cv::Size frame_size_{0, 0};
     cv::Matx33f homography_matrix_{cv::Matx33f::eye()};
     IntrinsicCameraParameters calibration_params_;
 };

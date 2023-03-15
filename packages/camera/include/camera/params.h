@@ -5,12 +5,8 @@
 namespace wbb {
 
 struct IntrinsicCameraParameters {
-    IntrinsicCameraParameters(
-            const cv::Matx33f& camera_matrix,
-            const cv::Vec<float, 5>& distortion)
-        : camera_matrix(camera_matrix)
-        , distortion(distortion)
-    {}
+    IntrinsicCameraParameters(const cv::Matx33f& camera_matrix, const cv::Vec<float, 5>& distortion)
+        : camera_matrix(camera_matrix), distortion(distortion) {}
 
     IntrinsicCameraParameters() = default;
 
@@ -26,25 +22,21 @@ struct BotPose {
 
 struct Marker {
     Marker() = default;
-    Marker(int id, std::vector<cv::Point2f> corner)
-        : id(id)
-        , corner(corner) 
-    {}
+    Marker(int id, std::vector<cv::Point2f> corners) : id(id), corners(corners) {}
 
-    int id;
-    std::vector<cv::Point2f> corner;
+    int id = 0;
+    std::vector<cv::Point2f> corners{};
 };
 
 struct DetectionResult {
-    std::optional<Marker> ego;
-    std::vector<Marker> corners;
+    std::optional<Marker> ego{};
+    std::vector<Marker> corners{};
 };
 
 IntrinsicCameraParameters importCameraCalibration(const std::string& path_to_yaml);
 
 void exportCameraCalibration(
-    const std::string& path_to_yaml,
-    const IntrinsicCameraParameters& params);
+    const std::string& path_to_yaml, const IntrinsicCameraParameters& params);
 
 IntrinsicCameraParameters calibrate(const std::vector<cv::String>& names);
 

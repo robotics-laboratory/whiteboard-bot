@@ -16,6 +16,8 @@ const int kBotMarkerId = 4;
 const float kBotMarkerSize = 0.1f;
 const float kBaseLength = 0.2f;
 const float kBaseWidth = 0.15f;
+const int kCornersMsgId = 0;
+const int kBotMsgId = 1;
 
 }  // namespace
 
@@ -50,7 +52,7 @@ CameraNode::CameraNode() : Node("CameraNode") {
     image_corners_publisher_ =
         this->create_publisher<wbb_msgs::msg::ImageMarkerPosArray>("/board/image/corners", 10);
 
-    image_border_publisher_ =
+    robot_border_publisher_ =
         this->create_publisher<wbb_msgs::msg::ImageMarkerPos>("/board/image/ego", 10);
 
     preview_corners_publisher_ =
@@ -91,7 +93,7 @@ cv::Mat CameraNode::removeDistortion(const cv::Mat& raw_image) {
     return undistorted_image;
 }
 
-DetectionResult CameraNode::detectMarkert(const cv::Mat& undistorted_image) {
+DetectionResult CameraNode::detectMarkers(const cv::Mat& undistorted_image) {
     std::vector<int> ids;
     std::vector<std::vector<cv::Point2f>> corners;
     cv::aruco::detectMarkers(undistorted_image, aruco_markers_dict_, corners, ids);
@@ -101,14 +103,18 @@ DetectionResult CameraNode::detectMarkert(const cv::Mat& undistorted_image) {
 
     for (size_t i = 0; i < ids.size(); ++i) {
         marker.id = ids[i];
-        marker.corner = corners[i];
+        marker.corners = corners[i];
 
         if (ids[i] == kBotMarkerId) {
-            detection.ego = std::optional<Marker>{marker};
+            detection.ego = marker;
         } else {
             detection.corners.push_back(marker);
         }
     }
+
+    std::sort(detection.corners.begin(), detection.corners.end(), [](auto left, auto right) {
+        return left.id < right.id;
+    });
 
     return detection;
 }
@@ -121,20 +127,10 @@ void CameraNode::tryUpdateHomography(const DetectionResult& detection) {
 
     RCLCPP_DEBUG(this->get_logger(), "Update homography");
 
-    std::vector<std::pair<int, std::vector<cv::Point2f>>> id_corners_marker;
-
-    for (size_t i = 0; i < detection.corners.size(); ++i) {
-        id_corners_marker.push_back({detection.corners[i].id, detection.corners[i].corner});
-    }
-
-    std::sort(id_corners_marker.begin(), id_corners_marker.end(), [](auto left, auto right) {
-        return left.first < right.first;
-    });
-
     std::vector<cv::Point2f> src_vertices;
 
-    for (size_t i = 0; i < id_corners_marker.size(); ++i) {
-        src_vertices.push_back(id_corners_marker[i].second[i]);
+    for (size_t i = 0; i < detection.corners.size(); ++i) {
+        src_vertices.push_back(detection.corners[i].corners[i]);
     }
 
     const std::vector<cv::Point2f> dst_vertices = {
@@ -147,112 +143,115 @@ void CameraNode::tryUpdateHomography(const DetectionResult& detection) {
 }
 
 cv::Mat CameraNode::warp(const cv::Mat& undistorted_image) {
-    cv::Mat warped_image;
+    cv::Mat warped_image(undistorted_image.size(), CV_32FC1);
     cv::warpPerspective(
         undistorted_image, warped_image, homography_matrix_, undistorted_image.size());
     return warped_image;
 }
 
 std::optional<BotPose> CameraNode::getBotPose(const std::optional<Marker>& ego) {
-    RCLCPP_DEBUG(this->get_logger(), "Bot pos");
     BotPose bot_pose;
 
     if (!ego) {
         return std::nullopt;
     }
 
-    const cv::Point2f bot_center = (ego->corner[0] + ego->corner[2]) / 2;
+    const cv::Point2f bot_center = (ego->corners[0] + ego->corners[2]) / 2;
     bot_pose.x = bot_center.x;
     bot_pose.y = bot_center.y;
 
-    cv::Point2f norm_vec = ego->corner[0] - ego->corner[3];
+    cv::Point2f norm_vec = ego->corners[0] - ego->corners[3];
     bot_pose.theta = atan2(norm_vec.y, norm_vec.x);
 
-    return std::optional<BotPose>{bot_pose};
+    return bot_pose;
 }
 
 DetectionResult CameraNode::transform(const DetectionResult& detection) {
     DetectionResult transformed_detection;
 
     for (size_t i = 0; i < detection.corners.size(); ++i) {
-        std::vector<cv::Point2f> transformed_marker;
+        std::vector<cv::Point2f> transformed_marker(4, cv::Point(0, 0));
         cv::perspectiveTransform(
-            detection.corners[i].corner, transformed_marker, homography_matrix_);
+            detection.corners[i].corners, transformed_marker, homography_matrix_);
         transformed_detection.corners.push_back(
             Marker(detection.corners[i].id, transformed_marker));
     }
 
     if (detection.ego) {
-        std::vector<cv::Point2f> transformed_marker;
-        cv::perspectiveTransform(detection.ego->corner, transformed_marker, homography_matrix_);
-        transformed_detection.ego->id = detection.ego->id;
-        transformed_detection.ego->corner = transformed_marker;
+        std::vector<cv::Point2f> transformed_marker(4, cv::Point(0, 0));
+        cv::perspectiveTransform(detection.ego->corners, transformed_marker, homography_matrix_);
+        transformed_detection.ego = Marker(detection.ego->id, transformed_marker);
     }
-
+    RCLCPP_DEBUG(this->get_logger(), "Transformed successfully");
     return transformed_detection;
 }
 
-void CameraNode::publishImage(const cv::Mat& warped_image) {
+void CameraNode::publishImage(const cv::Mat& warped_image, const rclcpp::Time& capturing_time) {
     sensor_msgs::msg::Image raw_msg;
-    cv_bridge::CvImage(std_msgs::msg::Header(), "bgr8", warped_image).toImageMsg(raw_msg);
+    cv_bridge::CvImage(msg::getHeader(capturing_time), "bgr8", warped_image).toImageMsg(raw_msg);
     image_publisher_->publish(raw_msg);
 }
 
 void CameraNode::publishImageBorder(const std::vector<cv::Point2f>& border) {
     const auto image_border_msg = msg::toImageMarkerPos(border);
-    image_border_publisher_->publish(image_border_msg);
+    robot_border_publisher_->publish(image_border_msg);
 }
 
-void CameraNode::publishRobotEgo(const std::optional<BotPose>& bot_pose) {
+void CameraNode::publishRobotEgo(
+    const std::optional<BotPose>& bot_pose, const rclcpp::Time& capturing_time) {
     if (!bot_pose) {
         return;
     }
 
-    const auto ego_msg = msg::toImagePose(*bot_pose);
+    const auto ego_msg = msg::toImagePose(*bot_pose, capturing_time);
     robot_ego_publisher_->publish(ego_msg);
 }
 
 void CameraNode::publishImageCorners(const std::vector<Marker>& markers) {
     std::vector<std::vector<cv::Point2f>> coords;
     for (auto marker : markers) {
-        coords.push_back(marker.corner);
+        coords.push_back(marker.corners);
     }
     const auto image_corners_msg = msg::toImageMarkerPosArray(coords);
     image_corners_publisher_->publish(image_corners_msg);
 }
 
-void CameraNode::publishPreview(const cv::Mat& warped_image) {
+void CameraNode::publishPreview(const cv::Mat& warped_image, const rclcpp::Time& capturing_time) {
     sensor_msgs::msg::CompressedImage compressed_msg;
-    cv_bridge::CvImage(std_msgs::msg::Header(), "bgr8", warped_image)
+    cv_bridge::CvImage(msg::getHeader(capturing_time), "bgr8", warped_image)
         .toCompressedImageMsg(compressed_msg);
     preview_publisher_->publish(compressed_msg);
 }
 
-void CameraNode::publishPreviewCorners(const std::vector<Marker>& markers) {
+void CameraNode::publishPreviewCorners(
+    const std::vector<Marker>& markers, const rclcpp::Time& capturing_time) {
+
     std::vector<std::vector<cv::Point2f>> coords;
     for (auto marker : markers) {
-        coords.push_back(marker.corner);
+        coords.push_back(marker.corners);
     }
-    const auto preview_corners_msg = msg::makeLineStripArray(coords);
+    const auto preview_corners_msg = msg::makeLineStripArray(kCornersMsgId, coords, capturing_time);
     preview_corners_publisher_->publish(preview_corners_msg);
 }
 
-void CameraNode::publishRobotBorder(const std::vector<cv::Point2f>& border) {
+void CameraNode::publishRobotBorder(
+    const std::vector<cv::Point2f>& border, const rclcpp::Time& capturing_time) {
+    visualization_msgs::msg::ImageMarker robot_border_msg;
     if (border.size() == 0) {
-        return;
+        robot_border_msg = msg::makeLineStrip(kBotMsgId, border, capturing_time, false, false);
+    } else {
+        robot_border_msg = msg::makeLineStrip(kBotMsgId, border, capturing_time);
     }
 
-    const auto robot_border_msg = msg::makeLineStrip(1, border);
     preview_border_publisher_->publish(robot_border_msg);
 }
 
 std::vector<cv::Point2f> CameraNode::getBorder(const std::optional<Marker>& ego) {
-    RCLCPP_DEBUG(this->get_logger(), "Border");
     if (!ego) {
         return {};
     }
 
-    cv::Point2f norm_vec = ego->corner[0] - ego->corner[3];
+    cv::Point2f norm_vec = ego->corners[0] - ego->corners[3];
     const float marker_pixel_size = cv::norm(norm_vec);
     float scale = marker_pixel_size / kBotMarkerSize;
 
@@ -276,27 +275,29 @@ std::vector<cv::Point2f> CameraNode::getBorder(const std::optional<Marker>& ego)
 
 void CameraNode::handleCameraOnTimer() {
     const cv::Mat raw_image = getImage();
+    rclcpp::Clock clock;
+    rclcpp::Time capturing_time = clock.now();
 
     const cv::Mat undistorted_image = removeDistortion(raw_image);
-    const DetectionResult detection = detectMarkert(undistorted_image);
+    const DetectionResult detection = detectMarkers(undistorted_image);
 
     tryUpdateHomography(detection);
 
-    const cv::Mat warped_image = warp(undistorted_image);
+    cv::Mat warped_image = warp(undistorted_image);
+
     DetectionResult transformed_detection = transform(detection);
 
     const std::optional<BotPose> bot_pose = getBotPose(transformed_detection.ego);
     const std::vector<cv::Point2f> border = getBorder(transformed_detection.ego);
-    
-    publishImage(warped_image);
+
+    publishImage(warped_image, capturing_time);
     publishImageCorners(transformed_detection.corners);
     publishImageBorder(border);
-    publishRobotEgo(bot_pose);
-
-
-    publishPreview(warped_image);
-    publishRobotBorder(border);
-    publishPreviewCorners(transformed_detection.corners);
+    publishRobotEgo(bot_pose, capturing_time);
+    
+    publishPreview(warped_image, capturing_time);
+    publishRobotBorder(border, capturing_time);
+    publishPreviewCorners(transformed_detection.corners, capturing_time);
 }
 
 }  // namespace wbb
