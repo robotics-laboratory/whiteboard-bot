@@ -1,13 +1,13 @@
 import argparse
 import asyncio
 import sys
-from enum import Enum
+from enum import IntEnum
 
 import websockets
 from pynput import keyboard
 
 
-class Dir(Enum):
+class Dir(IntEnum):
     FWD = 0
     BACK = 1
     STOP = 2
@@ -18,14 +18,25 @@ class Dir(Enum):
 class Controller:
     def __init__(self):
         self.direction = 0
+        self.radius = 10000
         self.increment = 10
         self.last_state = Dir.FWD
 
     def rotate(self, d):
-        if d == 1 and self.direction < 90:
-            self.direction = min(self.direction + self.increment, 90)
-        elif d == -1 and self.direction > -90:
-            self.direction = max(self.direction - self.increment, -90)
+        if d == 1:
+            self.radius = 0.00001
+        else:
+            self.radius = -0.00001
+        
+        #if d == 1 and self.radius < 10000:
+        #    self.radius += 100
+        #elif self.radius > -10000:
+        #    self.radius -= 100
+        
+        #if d == 1 and self.direction < 90:
+        #    self.direction = min(self.direction + self.increment, 90)
+        #elif d == -1 and self.direction > -90:
+        #    self.direction = max(self.direction - self.increment, -90)
 
     async def init_ip(self, ip):
         print("Connecting...")
@@ -39,9 +50,15 @@ class Controller:
         elif msg == Dir.RIGHT:
             self.rotate(1)
             msg = self.last_state
+        else:
+            self.radius = 10000
 
-        self.last_state = msg
-        await self.ws.send(str(msg) + ";" + str(self.direction + 90) + ";")
+        if msg == Dir.FWD or msg == Dir.BACK:
+            self.last_state = msg
+        
+        if self.radius == 0:
+            self.radius = 1
+        await self.ws.send(str(int(msg)) + ";" + str(round(1/self.radius, 6)) + ";")
 
 
 ctr = Controller()
