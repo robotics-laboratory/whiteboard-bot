@@ -51,6 +51,9 @@ float diff_coeff = min_diff_coeff; // 1/radius
 int spinup_delay = MOTOR_SPINUP_TIME / 255;
 unsigned long loop_time = 0;
 
+constexpr int VELOCITY_RAD_SEC = 5;  // Velocity (in radians/seconds)
+constexpr int MAX_SPEED_MM_S = 500;  // Max linear speed (in mm/s)
+
 enum Direction
 {
      FWD = 0,
@@ -62,28 +65,32 @@ enum Direction
 
 Direction dir = STOP;
 
-int groundSpeed(int radius, bool is_left)
+int rotationRadius(int radius, bool is_left)
 {
     if (is_left)
-        return radius + ROBOT_BASE_MM / 2;
-    return radius - ROBOT_BASE_MM / 2;
+        return radius - ROBOT_BASE_MM / 2;
+    return radius + ROBOT_BASE_MM / 2;
 }
 
 int calcDiffDirection(int radius, bool is_left)
 {
-    int var = groundSpeed(radius, is_left);
+    int var = rotationRadius(radius, is_left) * VELOCITY_RAD_SEC;
+    Serial.print(is_left ? "L" : "R");
+    Serial.print(" speed: ");
+    Serial.printf("%d/%d\n", var, MAX_SPEED_MM_S);
+
     if (var >= 0)
-        return map(var, 0, int(1.0/min_diff_coeff), 0, 255);
-    return map(var, -int(1.0/min_diff_coeff), 0, -255, 0);
+        return map(min(var, MAX_SPEED_MM_S), 0, MAX_SPEED_MM_S, 0, 255);
+    return map(max(var, -MAX_SPEED_MM_S), -MAX_SPEED_MM_S, 0, -255, 0);
 }
 
 int calcSpeed(int radius, bool is_left)
 {
-    if (abs(1.0/float(radius)) <= min_diff_coeff)
+    /*if (abs(1.0/float(radius)) <= min_diff_coeff)
     {
         // Forward
         return 255;
-    }
+    }*/
     return calcDiffDirection(radius, is_left);
 }
 
@@ -234,7 +241,7 @@ void event(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType ty
         }
                 
         diff_coeff = atof(tok);
-        Serial.println(diff_coeff);
+        //Serial.println(diff_coeff);
 
         if (abs(diff_coeff) < min_diff_coeff)
             diff_coeff = min_diff_coeff;
@@ -251,8 +258,8 @@ void event(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType ty
             timerAlarmDisable(ws_timeout);
         }
 
-        Serial.println(target_speed_left);
-        Serial.println(target_speed_right);
+        //Serial.println(target_speed_left);
+        //Serial.println(target_speed_right);
     }
 }
 
