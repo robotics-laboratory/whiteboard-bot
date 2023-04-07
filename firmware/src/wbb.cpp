@@ -76,11 +76,6 @@ int rotationRadius(int radius, bool is_left)
 int calcDiffDirection(int radius, bool is_left)
 {
     int var = rotationRadius(radius, is_left) * VELOCITY_RAD_SEC;
-    Serial.print(is_left ? "L" : "R");
-    Serial.print(" speed: ");
-    Serial.printf("%d/%d\n", var, MAX_SPEED_MM_S);
-
-    //delay(1); // watchdog fix
 
     if (var >= 0)
         return map(min(var, MAX_SPEED_MM_S), 0, MAX_SPEED_MM_S, 0, 255);
@@ -117,10 +112,9 @@ void setTargetSpeed(float coeff)
 
     int radius = int(1/coeff);
 
-    unsigned long int handler_time = millis();
+    
     target_speed_left.store(calcSpeed(radius, false^swap_dir));
     target_speed_right.store(calcSpeed(radius, true^swap_dir));
-    Serial.printf("Exec time: %d ms\n", millis() - handler_time);
 
     if (target_speed_left.load() < 0)
     {
@@ -148,13 +142,11 @@ void setTargetSpeed(float coeff)
     if (cur_dir != dir.load())
         dir.store(cur_dir);
 
-    Serial.printf("Targets: %d/%d, %d/%d\n", speed_left, target_speed_left.load(), speed_right, target_speed_right.load());
     // Otherwise the direction is FWD or STOP
 }
 
 void IRAM_ATTR onTimeout()
 {
-    Serial.println("Timeout!");
     dir.store(Direction::STOP);
     //setTargetSpeed();
     target_speed_left.store(0);
@@ -256,7 +248,6 @@ void event(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType ty
         }
                 
         diff_coeff.store(atof(tok));
-        //Serial.println(diff_coeff);
 
         if (abs(diff_coeff) < min_diff_coeff)
             diff_coeff.store(min_diff_coeff);
@@ -265,16 +256,13 @@ void event(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType ty
 
         if (code <= 1)
         {
-            //timerAlarmDisable(ws_timeout);
-            //timerAlarmEnable(ws_timeout);
+            timerAlarmDisable(ws_timeout);
+            timerAlarmEnable(ws_timeout);
         }
         if (code == 2)
         {
-            //timerAlarmDisable(ws_timeout);
+            timerAlarmDisable(ws_timeout);
         }
-
-        //Serial.println(target_speed_left);
-        //Serial.println(target_speed_right);
         
     }
 }
@@ -341,9 +329,9 @@ void setup()
 
     server.begin();
 
-    //ws_timeout = timerBegin(0, 80, true);
-    //timerAttachInterrupt(ws_timeout, &onTimeout, true);
-    //timerAlarmWrite(ws_timeout, WS_TIMEOUT_MS*1000, true);
+    ws_timeout = timerBegin(0, 80, true);
+    timerAttachInterrupt(ws_timeout, &onTimeout, true);
+    timerAlarmWrite(ws_timeout, WS_TIMEOUT_MS*1000, true);
 }
 
 void loop()
