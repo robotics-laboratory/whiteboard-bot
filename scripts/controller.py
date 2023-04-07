@@ -19,14 +19,15 @@ class Controller:
     def __init__(self):
         self.direction = 0
         self.radius = 100
+        self.forward_radius = 1000
         self.increment = 10
         self.last_state = Dir.FWD
 
     def rotate(self, d):
         if d == 1:
-            self.radius = 60
+            self.radius = 10
         else:
-            self.radius = -60
+            self.radius = -10
         
         #if d == 1 and self.radius < 10000:
         #    self.radius += 100
@@ -51,7 +52,7 @@ class Controller:
             self.rotate(1)
             msg = self.last_state
         else:
-            self.radius = 1000
+            self.radius = self.forward_radius
 
         if msg == Dir.FWD or msg == Dir.BACK:
             self.last_state = msg

@@ -12,13 +12,16 @@ constexpr int L298N_RIGHT_MOTOR_IN4_PIN = 25;
 constexpr int L298N_LEFT_MOTOR_SPEED_PIN = 27;
 constexpr int L298N_RIGHT_MOTOR_SPEED_PIN = 14;
 
-constexpr int LEFT_MOTOR_MAX_SPEED = 255;
-constexpr int RIGHT_MOTOR_MAX_SPEED = 255;
+constexpr float LEFT_MOTOR_MAX_SPEED = 1.0;
+constexpr float RIGHT_MOTOR_MAX_SPEED = 1.0;
 
 constexpr int MOTOR_MAX_SPEED_MMPS = 100; // Max motor speed in millimeter
-constexpr int MOTOR_SPINUP_TIME = 250; // Smoothly increasing/decreasing motor speed for x milliseconds
+constexpr int MOTOR_SPINUP_TIME_MAX_SPEED_MS = 250; // Smoothly increasing/decreasing motor speed for x milliseconds to the top speed
 
 constexpr int ROBOT_BASE_MM = 80;
+
+constexpr int VELOCITY_RAD_SEC = 5;  // Velocity (in radians/seconds) for each wheel
+constexpr int MAX_SPEED_MM_S = 500;  // Max linear speed (in mm/s)
 
 constexpr char* MDNS_DEVICE = "wbb-bot";
 constexpr char* SERVICE_NAME = "ws-control";
@@ -43,17 +46,17 @@ bool fwd4 = true;
 int speed_left = 0;
 int speed_right = 0;
 
+int motor_a_max = LEFT_MOTOR_MAX_SPEED * 255;
+int motor_b_max = RIGHT_MOTOR_MAX_SPEED * 255;
+
 static std::atomic<int> target_speed_left(0);
 static std::atomic<int> target_speed_right(0);
 
 constexpr float min_diff_coeff = 0.0001;
 static std::atomic<float> diff_coeff(min_diff_coeff); // 1/radius
 
-int spinup_delay = MOTOR_SPINUP_TIME / 255;
+int spinup_delay = MOTOR_SPINUP_TIME_MAX_SPEED_MS / 255; // Calculating spinup delay for 1 step
 unsigned long loop_time = 0;
-
-constexpr int VELOCITY_RAD_SEC = 5;  // Velocity (in radians/seconds)
-constexpr int MAX_SPEED_MM_S = 500;  // Max linear speed (in mm/s)
 
 enum Direction
 {
@@ -84,11 +87,6 @@ int calcDiffDirection(int radius, bool is_left)
 
 int calcSpeed(int radius, bool is_left)
 {
-    /*if (abs(1.0/float(radius)) <= min_diff_coeff)
-    {
-        // Forward
-        return 255;
-    }*/
     return calcDiffDirection(radius, is_left);
 }
 
@@ -112,11 +110,10 @@ void setTargetSpeed(float coeff)
 
     int radius = int(1/coeff);
 
-    
     target_speed_left.store(calcSpeed(radius, false^swap_dir));
     target_speed_right.store(calcSpeed(radius, true^swap_dir));
 
-    if (target_speed_left.load() < 0)
+    if (target_speed_left.load() < 0) // Going right
     {
         if (cur_dir == BACK)
         {
@@ -127,7 +124,7 @@ void setTargetSpeed(float coeff)
         else
             cur_dir = LEFT;
     }
-    if (target_speed_right < 0)
+    if (target_speed_right < 0) // Going left
     {
         if (cur_dir == BACK)
         {
@@ -161,9 +158,9 @@ void go(bool dir1, bool dir2, bool dir3, bool dir4)
     fwd4 = dir4;
 }
 
-void switchState()
+void updateL298N(Direction dir)
 {
-    switch(dir.load())
+    switch(dir)
     {
         case FWD:
             go(false, true, false, true);
@@ -181,6 +178,11 @@ void switchState()
             go(true, false, false, true);
             break;
     }
+}
+
+void switchState()
+{
+    updateL298N(dir.load());
 }
 
 int smoothMovement(int speed, int target)
@@ -286,8 +288,9 @@ void spinMotors()
     digitalWrite(L298N_LEFT_MOTOR_IN2_PIN, fwd2);
     digitalWrite(L298N_RIGHT_MOTOR_IN3_PIN, fwd3);
     digitalWrite(L298N_RIGHT_MOTOR_IN4_PIN, fwd4);
-    analogWrite(L298N_LEFT_MOTOR_SPEED_PIN, mapMaxSpeed(abs(speed_left), LEFT_MOTOR_MAX_SPEED));
-    analogWrite(L298N_RIGHT_MOTOR_SPEED_PIN, mapMaxSpeed(abs(speed_right), RIGHT_MOTOR_MAX_SPEED));
+    analogWrite(L298N_LEFT_MOTOR_SPEED_PIN, mapMaxSpeed(abs(speed_left), motor_a_max));
+    analogWrite(L298N_RIGHT_MOTOR_SPEED_PIN, mapMaxSpeed(abs(speed_right), motor_b_max));
+    //Serial.printf("Targets: %d/%d, %d/%d\n", speed_left, target_speed_left.load(), speed_right, target_speed_right.load());
 }
 
 void setup()
