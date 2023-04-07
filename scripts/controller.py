@@ -18,7 +18,7 @@ class Dir(IntEnum):
 class Controller:
     def __init__(self):
         self.direction = 0
-        self.radius = 10000
+        self.radius = 100
         self.increment = 10
         self.last_state = Dir.FWD
 

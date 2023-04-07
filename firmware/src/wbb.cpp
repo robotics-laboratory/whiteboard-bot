@@ -3,6 +3,7 @@
 #include <AsyncTCP.h>
 #include <ESPAsyncWebServer.h>
 #include "ESPmDNS.h"
+#include <atomic>
 
 constexpr int L298N_LEFT_MOTOR_IN1_PIN = 33;
 constexpr int L298N_LEFT_MOTOR_IN2_PIN = 32;
@@ -15,7 +16,7 @@ constexpr int LEFT_MOTOR_MAX_SPEED = 255;
 constexpr int RIGHT_MOTOR_MAX_SPEED = 255;
 
 constexpr int MOTOR_MAX_SPEED_MMPS = 100; // Max motor speed in millimeter
-constexpr int MOTOR_SPINUP_TIME = 1000; // Smoothly increasing/decreasing motor speed for x milliseconds
+constexpr int MOTOR_SPINUP_TIME = 250; // Smoothly increasing/decreasing motor speed for x milliseconds
 
 constexpr int ROBOT_BASE_MM = 80;
 
@@ -42,11 +43,11 @@ bool fwd4 = true;
 int speed_left = 0;
 int speed_right = 0;
 
-int target_speed_left = 0;
-int target_speed_right = 0;
+static std::atomic<int> target_speed_left(0);
+static std::atomic<int> target_speed_right(0);
 
 constexpr float min_diff_coeff = 0.0001;
-float diff_coeff = min_diff_coeff; // 1/radius
+static std::atomic<float> diff_coeff(min_diff_coeff); // 1/radius
 
 int spinup_delay = MOTOR_SPINUP_TIME / 255;
 unsigned long loop_time = 0;
@@ -63,7 +64,7 @@ enum Direction
     RIGHT = 4
 };
 
-Direction dir = STOP;
+static std::atomic<Direction> dir(STOP);
 
 int rotationRadius(int radius, bool is_left)
 {
@@ -78,6 +79,8 @@ int calcDiffDirection(int radius, bool is_left)
     Serial.print(is_left ? "L" : "R");
     Serial.print(" speed: ");
     Serial.printf("%d/%d\n", var, MAX_SPEED_MM_S);
+
+    //delay(1); // watchdog fix
 
     if (var >= 0)
         return map(min(var, MAX_SPEED_MM_S), 0, MAX_SPEED_MM_S, 0, 255);
@@ -94,57 +97,68 @@ int calcSpeed(int radius, bool is_left)
     return calcDiffDirection(radius, is_left);
 }
 
-void setTargetSpeed()
+void setTargetSpeed(float coeff)
 {
-    if (dir == STOP)
+    Direction cur_dir = dir.load();
+    if (cur_dir == STOP)
     {
-        target_speed_left = 0;
-        target_speed_right = 0;
+        target_speed_left.store(0);
+        target_speed_right.store(0);
         return;
     }
 
     bool swap_dir = false;
 
-    if (diff_coeff < 0)
+    if (coeff < 0)
     {
-        diff_coeff *= -1;
+        coeff *= -1;
         swap_dir = true;
     }
 
-    int radius = int(1/diff_coeff);
+    int radius = int(1/coeff);
 
-    target_speed_left = calcSpeed(radius, false^swap_dir);
-    target_speed_right = calcSpeed(radius, true^swap_dir);
+    unsigned long int handler_time = millis();
+    target_speed_left.store(calcSpeed(radius, false^swap_dir));
+    target_speed_right.store(calcSpeed(radius, true^swap_dir));
+    Serial.printf("Exec time: %d ms\n", millis() - handler_time);
 
-    if (target_speed_left < 0)
+    if (target_speed_left.load() < 0)
     {
-        if (dir == BACK)
+        if (cur_dir == BACK)
         {
-            dir = RIGHT;
-            target_speed_left *= -1;
-            target_speed_right *= -1;
+            cur_dir = RIGHT;
+            target_speed_left.store(target_speed_left.load() * -1);
+            target_speed_right.store(target_speed_right.load() * -1);
         }
         else
-            dir = LEFT;
+            cur_dir = LEFT;
     }
     if (target_speed_right < 0)
     {
-        if (dir == BACK)
+        if (cur_dir == BACK)
         {
-            dir = LEFT;
-            target_speed_left *= -1;
-            target_speed_right *= -1;
+            cur_dir = LEFT;
+            target_speed_left.store(target_speed_left.load() * -1);
+            target_speed_right.store(target_speed_right.load() * -1);
         }
         else
-            dir = RIGHT;
+            cur_dir = RIGHT;
     }
+
+    if (cur_dir != dir.load())
+        dir.store(cur_dir);
+
+    Serial.printf("Targets: %d/%d, %d/%d\n", speed_left, target_speed_left.load(), speed_right, target_speed_right.load());
     // Otherwise the direction is FWD or STOP
 }
 
 void IRAM_ATTR onTimeout()
 {
-    dir = Direction::STOP;
-    setTargetSpeed();
+    Serial.println("Timeout!");
+    dir.store(Direction::STOP);
+    //setTargetSpeed();
+    target_speed_left.store(0);
+    target_speed_right.store(0);
 }
 
 void go(bool dir1, bool dir2, bool dir3, bool dir4)
@@ -157,7 +171,7 @@ void go(bool dir1, bool dir2, bool dir3, bool dir4)
 
 void switchState()
 {
-    switch(dir)
+    switch(dir.load())
     {
         case FWD:
             go(false, true, false, true);
@@ -200,6 +214,7 @@ int smoothMovement(int speed, int target)
 
 void event(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len)
 {
+    
     if (type != WS_EVT_DATA)
         return;
     
@@ -225,7 +240,7 @@ void event(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType ty
 
         if (code >= 0 && code <= 2)
         {
-            dir = static_cast<Direction>(code);
+            dir.store(static_cast<Direction>(code));
         }
         else
         {
@@ -240,26 +255,27 @@ void event(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType ty
             return;
         }
                 
-        diff_coeff = atof(tok);
+        diff_coeff.store(atof(tok));
         //Serial.println(diff_coeff);
 
         if (abs(diff_coeff) < min_diff_coeff)
-            diff_coeff = min_diff_coeff;
+            diff_coeff.store(min_diff_coeff);
 
-        setTargetSpeed();
+        setTargetSpeed(diff_coeff.load());
 
         if (code <= 1)
         {
-            timerAlarmDisable(ws_timeout);
-            timerAlarmEnable(ws_timeout);
+            //timerAlarmDisable(ws_timeout);
+            //timerAlarmEnable(ws_timeout);
         }
         if (code == 2)
         {
-            timerAlarmDisable(ws_timeout);
+            //timerAlarmDisable(ws_timeout);
         }
 
         //Serial.println(target_speed_left);
         //Serial.println(target_speed_right);
+        
     }
 }
 
@@ -325,20 +341,20 @@ void setup()
 
     server.begin();
 
-    ws_timeout = timerBegin(0, 80, true);
-    timerAttachInterrupt(ws_timeout, &onTimeout, true);
-    timerAlarmWrite(ws_timeout, WS_TIMEOUT_MS*1000, true);
+    //ws_timeout = timerBegin(0, 80, true);
+    //timerAttachInterrupt(ws_timeout, &onTimeout, true);
+    //timerAlarmWrite(ws_timeout, WS_TIMEOUT_MS*1000, true);
 }
 
 void loop()
 {
     loop_time = millis();
-    speed_left = smoothMovement(speed_left, target_speed_left);
-    speed_right = smoothMovement(speed_right, target_speed_right);
+    speed_left = smoothMovement(speed_left, target_speed_left.load());
+    speed_right = smoothMovement(speed_right, target_speed_right.load());
 
     spinMotors();
 
-    ws.cleanupClients();
+    delay(max(1, spinup_delay - int(millis() - loop_time)));
 
-    delay(max(0, spinup_delay - int(millis() - loop_time)));
+    ws.cleanupClients();
 }
