@@ -1,0 +1,13 @@
+launch:
+- arg:
+    name: "calibration_params_path"
+    default: "$(find-pkg-share camera)/config/calibration_params.yaml"
+- node:
+    pkg: "camera"
+    exec: "camera"
+    name: "camera"
+    param:
+    - {name: "calibration_params", value: "$(var calibration_params_path)"}
+    - {name: "camera_period", value: 100}
+    - {name: "frame_width", value: 1920}
+    - {name: "frame_height", value: 1080}
