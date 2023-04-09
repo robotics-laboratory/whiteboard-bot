@@ -18,6 +18,7 @@ const float kBaseLength = 0.2f;
 const float kBaseWidth = 0.15f;
 const int kCornersMsgId = 0;
 const int kBotMsgId = 1;
+const int kBorderId = 6;
 
 }  // namespace
 
@@ -193,7 +194,10 @@ void CameraNode::publishImage(const cv::Mat& warped_image, const rclcpp::Time& c
 }
 
 void CameraNode::publishImageBorder(const std::vector<cv::Point2f>& border) {
-    const auto image_border_msg = msg::toImageMarkerPos(border);
+    Marker border_marker;
+    border_marker.corners = border;
+    border_marker.id = kBorderId;
+    const auto image_border_msg = msg::toImageMarkerPos(border_marker);
     robot_border_publisher_->publish(image_border_msg);
 }
 
@@ -208,11 +212,7 @@ void CameraNode::publishRobotEgo(
 }
 
 void CameraNode::publishImageCorners(const std::vector<Marker>& markers) {
-    std::vector<std::vector<cv::Point2f>> coords;
-    for (auto marker : markers) {
-        coords.push_back(marker.corners);
-    }
-    const auto image_corners_msg = msg::toImageMarkerPosArray(coords);
+    const auto image_corners_msg = msg::toImageMarkerPosArray(markers);
     image_corners_publisher_->publish(image_corners_msg);
 }
 

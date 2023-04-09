@@ -25,9 +25,9 @@ foxglove_msgs::msg::ImageMarkerArray makeLineStripArray(
 
 wbb_msgs::msg::ImagePose toImagePose(const wbb::BotPose& pose, const rclcpp::Time& capturing_time);
 
-wbb_msgs::msg::ImageMarkerPos toImageMarkerPos(const std::vector<cv::Point2f>& marker);
+wbb_msgs::msg::ImageMarkerPos toImageMarkerPos(const Marker& marker);
 
 wbb_msgs::msg::ImageMarkerPosArray toImageMarkerPosArray(
-    const std::vector<std::vector<cv::Point2f>>& markers_coords);
+    const std::vector<Marker>& markers_coords);
 
 }  // namespace wbb::msg

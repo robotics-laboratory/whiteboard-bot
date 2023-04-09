@@ -78,21 +78,23 @@ wbb_msgs::msg::ImagePose toImagePose(const wbb::BotPose& pose, const rclcpp::Tim
     return msg;
 }
 
-wbb_msgs::msg::ImageMarkerPos toImageMarkerPos(const std::vector<cv::Point2f>& marker) {
+wbb_msgs::msg::ImageMarkerPos toImageMarkerPos(const Marker& marker) {
     wbb_msgs::msg::ImageMarkerPos msg;
     wbb_msgs::msg::ImagePoint point;
 
-    for (const auto& corner : marker) {
+    for (const auto& corner : marker.corners) {
         point.x = round<int>(corner.x);
         point.y = round<int>(corner.y);
         msg.corners.push_back(point);
     }
 
+    msg.id = marker.id;
+
     return msg;
 }
 
 wbb_msgs::msg::ImageMarkerPosArray toImageMarkerPosArray(
-    const std::vector<std::vector<cv::Point2f>>& markers) {
+    const std::vector<Marker>& markers) {
     wbb_msgs::msg::ImageMarkerPosArray msg;
 
     for (const auto& marker : markers) {
