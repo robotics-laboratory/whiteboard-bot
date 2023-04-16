@@ -14,12 +14,12 @@ find_package(sensor_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(visualization_msgs REQUIRED)
 find_package(foxglove_msgs REQUIRED)
-find_package(wbb_msgs)
+find_package(wbb_msgs REQUIRED)
 find_package(yaml_cpp_vendor REQUIRED)
 
 add_executable(camera_calibration src/camera_calibration.cpp src/params.cpp)
 
-add_executable(camera src/main.cpp src/camera_node.cpp src/params.cpp src/messages_helper.cpp)
+add_executable(camera src/main.cpp src/camera_node.cpp src/params.cpp src/message_helper.cpp)
 
 target_include_directories(camera_calibration PUBLIC
   "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"

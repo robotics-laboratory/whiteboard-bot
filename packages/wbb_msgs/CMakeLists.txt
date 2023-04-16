@@ -13,6 +13,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   msg/ImagePoint.msg
   msg/ImageMarkerPos.msg
   msg/ImageMarkerPosArray.msg
+  msg/SegmentationGrid.msg
   DEPENDENCIES
   builtin_interfaces
   ADD_LINTER_TESTS

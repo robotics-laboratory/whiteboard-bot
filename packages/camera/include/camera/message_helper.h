@@ -1,6 +1,6 @@
 #pragma once
 
-#include "camera/params.h"
+#include "camera/detection.h"
 
 #include <wbb_msgs/msg/image_pose.hpp>
 #include <wbb_msgs/msg/image_marker_pos.hpp>
@@ -13,7 +13,7 @@
 
 namespace wbb::msg {
 
-std_msgs::msg::Header getHeader(const rclcpp::Time& capturing_time);
+std_msgs::msg::Header makeHeader(const rclcpp::Time& capturing_time);
 
 visualization_msgs::msg::ImageMarker makeLineStrip(
     int id, const std::vector<cv::Point2f>& coords, const rclcpp::Time& capturing_time,
@@ -27,7 +27,6 @@ wbb_msgs::msg::ImagePose toImagePose(const wbb::BotPose& pose, const rclcpp::Tim
 
 wbb_msgs::msg::ImageMarkerPos toImageMarkerPos(const Marker& marker);
 
-wbb_msgs::msg::ImageMarkerPosArray toImageMarkerPosArray(
-    const std::vector<Marker>& markers_coords);
+wbb_msgs::msg::ImageMarkerPosArray toImageMarkerPosArray(const std::vector<Marker>& markers_coords);
 
 }  // namespace wbb::msg

@@ -1,0 +1,7 @@
+launch:
+- node:
+    pkg: "segmentation"
+    exec: "segmentation"
+    name: "segmentation"
+    param:
+    - {name: "segmentation_period", value: 1000}
