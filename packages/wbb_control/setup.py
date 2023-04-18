@@ -13,9 +13,9 @@ setup(
     ],
     install_requires=['setuptools', 'websockets'],
     zip_safe=True,
-    maintainer='root',
-    maintainer_email='root@todo.todo',
-    description='TODO: Package description',
+    maintainer='enaix',
+    maintainer_email='enaix@protonmail.com',
+    description='Whiteboard bot control node',
     license='TODO: License declaration',
     tests_require=['pytest'],
     entry_points={
