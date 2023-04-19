@@ -22,10 +22,10 @@ class ControlNode(Node):
     def __init__(self):
         super(ControlNode, self).__init__("control")
         self.declare_parameter("esp32_ip", "192.168.1.121")
-        self.sub = self.create_subscription(Control, "movement", self.send, 10)
+        self.sub = self.create_subscription(Control, "/control", self.send, 10)
 
     async def init_conn(self):
-        ip = self.get_parameter("esp32_ip").get_parameter_value().string_value
+        ip = self.get_parameter("esp32_ip").value
         self.ws = await websockets.connect("wss://" + ip + "/ws", port=80, ssl=False)
 
     async def send(self, msg):
