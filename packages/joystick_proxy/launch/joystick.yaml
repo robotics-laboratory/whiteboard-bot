@@ -1,0 +1,12 @@
+launch:
+- arg:
+    name: "control_name"
+    default: "ps4"
+- node:
+    pkg: "joystick_proxy"
+    exec: "joystick"
+    name: "joystick"
+    param:
+    - {name: "control_map", value: "$(find-pkg-share joystick_proxy)/config/$(var control_name).yaml"}
+    - {name: "max_curvature", value: 40.0}
+    - {name: "min_velocity", value: 0.0}
