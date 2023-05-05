@@ -1,7 +1,7 @@
 #pragma once
 
+#include "detection/detection.h"
 #include "camera/params.h"
-#include "camera/detection.h"
 #include <wbb_msgs/msg/image_pose.hpp>
 #include <wbb_msgs/msg/image_marker_pos.hpp>
 #include <wbb_msgs/msg/image_marker_pos_array.hpp>
@@ -41,8 +41,7 @@ class CameraNode : public rclcpp::Node {
     void publishPreview(const cv::Mat& warped_image, const rclcpp::Time& capturing_time);
     void publishPreviewCorners(
         const std::vector<Marker>& markers, const rclcpp::Time& capturing_time);
-    void publishBotBox(
-        const std::vector<cv::Point2f>& border, const rclcpp::Time& capturing_time);
+    void publishBotBox(const std::vector<cv::Point2f>& border, const rclcpp::Time& capturing_time);
 
     rclcpp::TimerBase::SharedPtr timer_;
     rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr image_publisher_ = nullptr;

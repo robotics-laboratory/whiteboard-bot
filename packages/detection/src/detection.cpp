@@ -1,4 +1,4 @@
-#include "camera/message_helper.h"
+#include "detection/detection.h"
 
 #include <wbb_msgs/msg/image_point.hpp>
 
@@ -6,8 +6,38 @@
 
 #include <chrono>
 
-namespace wbb::msg {
+namespace wbb {
 
+Marker toMarker(const wbb_msgs::msg::ImageMarkerPos& msg) {
+    Marker marker;
+
+    marker.id = msg.id;
+    for (const auto& corner : msg.corners) {
+        marker.corners.push_back(cv::Point(corner.x, corner.y));
+    }
+
+    return marker;
+}
+
+std::vector<Marker> toMarkerArray(const wbb_msgs::msg::ImageMarkerPosArray& msg) {
+    std::vector<Marker> markers{};
+
+    for (const auto& marker : msg.markers) {
+        markers.push_back(toMarker(marker));
+    }
+
+    return markers;
+}
+
+std::optional<Marker> toBotBox(const wbb_msgs::msg::ImageMarkerPos& msg) {
+    if (msg.corners.empty()) {
+        return std::nullopt;
+    }
+
+    return toMarker(msg);
+}
+
+namespace msg {
 std_msgs::msg::Header makeHeader(const rclcpp::Time& capturing_time) {
     std_msgs::msg::Header header;
     header.frame_id = "";
@@ -72,6 +102,46 @@ foxglove_msgs::msg::ImageMarkerArray makeLineStripArray(
     return msg;
 }
 
+visualization_msgs::msg::ImageMarker makePolygon(const std::vector<std::pair<int, int>>& coords) {
+    visualization_msgs::msg::ImageMarker msg;
+
+    msg.ns = "";
+    msg.type = visualization_msgs::msg::ImageMarker::POLYGON;
+    msg.action = visualization_msgs::msg::ImageMarker::ADD;
+
+    geometry_msgs::msg::Point point;
+    std_msgs::msg::ColorRGBA color;
+
+    color.r = 1.0;
+    color.g = 0.0;
+    color.b = 0.0;
+    color.a = 0.4;
+
+    msg.filled = 1;
+    msg.outline_color = color;
+    msg.fill_color = color;
+
+    for (const auto& cur_point : coords) {
+        point.x = cur_point.first;
+        point.y = cur_point.second;
+        msg.points.push_back(point);
+    }
+
+    return msg;
+}
+
+foxglove_msgs::msg::ImageMarkerArray makePolygonArray(
+    const std::vector<std::vector<std::pair<int, int>>>& markers_coords) {
+    foxglove_msgs::msg::ImageMarkerArray msg;
+
+    for (const auto& coords : markers_coords) {
+        const auto marker_msg = makePolygon(coords);
+        msg.markers.push_back(marker_msg);
+    }
+
+    return msg;
+}
+
 wbb_msgs::msg::ImagePose toImagePose(const wbb::BotPose& pose, const rclcpp::Time& capturing_time) {
     wbb_msgs::msg::ImagePose msg;
 
@@ -109,4 +179,6 @@ wbb_msgs::msg::ImageMarkerPosArray toImageMarkerPosArray(const std::vector<Marke
     return msg;
 }
 
-}  // namespace wbb::msg
+}  // namespace msg
+
+}  // namespace wbb

@@ -4,4 +4,6 @@ launch:
     exec: "segmentation"
     name: "segmentation"
     param:
-    - {name: "segmentation_period", value: 1000}
+    - {name: "segmentation_period", value: 2000}
+    - {name: "resolution", value: 30}
+    - {name: "delta", value: 3}

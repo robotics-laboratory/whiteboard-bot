@@ -3,22 +3,24 @@
 #include <cv_bridge/cv_bridge.h>
 #include <std_msgs/msg/header.hpp>
 
+#include <opencv2/highgui.hpp>
+#include <opencv2/imgproc.hpp>
+#include <opencv2/core.hpp>
+
 #include <chrono>
 #include <stdio.h>
-#include <opencv2/opencv.hpp>
 
 namespace {
+int floor(int a, int b) { return (a + b - 1) / b; }
 
-const int resolution = 30;  //  TODO: сделать скейл в зависимости от размеров стерки
-const int delta = 30;  // TODO: сделать дельту зависимой от размера стерки
-
-} // namespace
+int get_index(int x, int y, int width) { return y * width + x; }
+}  // namespace
 
 namespace wbb {
 
 SegmentationNode::SegmentationNode() : Node("SegmentationNode") {
-    image_publisher_ =
-        this->create_publisher<sensor_msgs::msg::CompressedImage>("/board/preview/segmetation", 10);
+    preview_publisher_ = this->create_publisher<foxglove_msgs::msg::ImageMarkerArray>(
+        "/board/preview/segmetation", 10);
 
     segmentation_publisher_ =
         this->create_publisher<wbb_msgs::msg::SegmentationGrid>("/board/segmentation", 10);
@@ -41,35 +43,24 @@ SegmentationNode::SegmentationNode() : Node("SegmentationNode") {
     timer_ = this->create_wall_timer(
         segmentation_period, std::bind(&SegmentationNode::makeSegmentationOnTimer, this));
 
-    markers_ = std::vector<Marker>(4);
-    bot_box_.corners = std::vector<cv::Point2f>(4);
+    resolution_ = this->declare_parameter<int>("resolution", 30);
+    delta_ = this->declare_parameter<int>("delta", 3);
 }
 
 void SegmentationNode::handleImage(sensor_msgs::msg::Image::ConstSharedPtr msg) {
+    RCLCPP_DEBUG(this->get_logger(), "Get image");
     auto cv_image = cv_bridge::toCvShare(msg);
     board_image_ = cv_image->image;
 }
 
 void SegmentationNode::handleMarkers(wbb_msgs::msg::ImageMarkerPosArray msg) {
-    for (const auto& marker : msg.markers) {
-        Marker cur_marker{};
-        cur_marker.id = marker.id;
-
-        for (const auto& corner : marker.corners) {
-            cur_marker.corners.push_back(cv::Point(corner.x, corner.y));
-        }
-        markers_[cur_marker.id] = std::move(cur_marker);
-    }
+    RCLCPP_DEBUG(this->get_logger(), "Get markers");
+    markers_ = toMarkerArray(msg);
 }
 
 void SegmentationNode::handleBotBox(wbb_msgs::msg::ImageMarkerPos msg) {
-    if (!msg.corners.size()) {
-        return;
-    }
-
-    for (size_t i = 0; i < msg.corners.size(); ++i) {
-        bot_box_.corners[i] = cv::Point(msg.corners[i].x, msg.corners[i].y);
-    }
+    RCLCPP_DEBUG(this->get_logger(), "Get bot box");
+    bot_box_ = toBotBox(msg);
 }
 
 cv::Mat SegmentationNode::applyThreshold(const cv::Mat& image) {
@@ -92,117 +83,129 @@ cv::Mat SegmentationNode::applyThreshold(const cv::Mat& image) {
 
     cv::Mat result_image;
     cv::max(threshold_image, adapt_threshold_image, result_image);
+
+    if (bot_box_) {
+        std::vector<cv::Point> border_coords;
+        for (const auto& corner : bot_box_->corners) {
+            border_coords.push_back(cv::Point(ceil<int>(corner.x), ceil<int>(corner.y)));
+        }
+        cv::fillConvexPoly(result_image, border_coords, cv::Scalar(0, 0, 0));
+    }
+
+    RCLCPP_DEBUG(this->get_logger(), "Thresholded successfully");
+
     return result_image;
 }
 
-void SegmentationNode::publishCompressedImage(const cv::Mat& image) {
-    sensor_msgs::msg::CompressedImage compressed_msg;
-    cv_bridge::CvImage(std_msgs::msg::Header(), "bgr8", image).toCompressedImageMsg(compressed_msg);
-    image_publisher_->publish(compressed_msg);
-}
+SegmentationGrid SegmentationNode::segment(const cv::Mat& threshold_image) {
+    int last_pixel_width = threshold_image.cols - 1;
+    int last_pixel_height = threshold_image.rows - 1;
 
-void SegmentationNode::makeSegmentationOnTimer() {
-    if (board_image_.cols == 0) {
-        return;
-    }
+    SegmentationGrid segmentation;
 
-    cv::Mat board_copy = board_image_.clone();
-    cv::Mat threshold_image = applyThreshold(board_copy).clone();
+    segmentation.resolution = resolution_;
+    segmentation.width = floor(threshold_image.cols, resolution_);
+    segmentation.height = floor(threshold_image.rows, resolution_);
 
-    int frame_width = board_image_.cols - 1;
-    int frame_height = board_image_.rows - 1;
+    for (int i = 0; i * resolution_ < last_pixel_height; ++i) {
+        for (int j = 0; j * resolution_ < last_pixel_width; ++j) {
+            int min_x = j * resolution_;
+            int max_x = std::min((j + 1) * resolution_, last_pixel_width);
 
-    for (const auto& marker : markers_) {
-        std::vector<cv::Point> rect_coords{};
-        cv::Point corner = cv::Point(
-            ceil<int>(marker.corners[(marker.id + 2) % 4].x),
-            ceil<int>(marker.corners[(marker.id + 2) % 4].y));
-
-        if (marker.id == 0 || marker.id == 3) {
-            corner.x += delta;
-        } else {
-            corner.x -= delta;
-        }
-        corner.x = std::max(std::min(corner.x, frame_width), 0);
-
-        if (marker.id == 0 || marker.id == 1) {
-            corner.y += delta;
-        } else {
-            corner.y -= delta;
-        }
-        corner.y = std::max(std::min(corner.y, frame_height), 0);
-
-        switch (marker.id) {
-            case 0:
-                rect_coords = {
-                    cv::Point(0, 0), cv::Point(corner.x, 0), corner, cv::Point(0, corner.y)};
-                break;
-            case 1:
-                rect_coords = {
-                    cv::Point(corner.x, 0),
-                    cv::Point(frame_width, 0),
-                    cv::Point(frame_width, corner.y),
-                    corner};
-                break;
-            case 2:
-                rect_coords = {
-                    corner,
-                    cv::Point(frame_width, corner.y),
-                    cv::Point(frame_width, frame_height),
-                    cv::Point(corner.x, frame_height)};
-                break;
-            default:
-                rect_coords = {
-                    corner,
-                    cv::Point(corner.x, frame_height),
-                    cv::Point(0, frame_height),
-                    cv::Point(0, corner.y)};
-        }
-
-        cv::fillConvexPoly(threshold_image, rect_coords, cv::Scalar(0, 0, 0));
-    }
-
-    if (bot_box_.corners.size() > 0) {
-        std::vector<cv::Point> border_coords;
-        for (const auto& corner : bot_box_.corners) {
-            border_coords.push_back(cv::Point(ceil<int>(corner.x), ceil<int>(corner.y)));
-        }
-        cv::fillConvexPoly(threshold_image, border_coords, cv::Scalar(0, 0, 0));
-    }
-
-    wbb_msgs::msg::SegmentationGrid segmentation_msg;
-
-    segmentation_msg.resolution = resolution;
-    segmentation_msg.width = (frame_width + resolution) / resolution;
-    segmentation_msg.height = (frame_height + resolution) / resolution;
-
-    for (int i = 0; i * resolution < frame_height; ++i) {
-        for (int j = 0; j * resolution < frame_width; ++j) {
-            int min_x = j * resolution;
-            int max_x = std::min((j + 1) * resolution, frame_width);
-
-            int min_y = i * resolution;
-            int max_y = std::min((i + 1) * resolution, frame_height);
+            int min_y = i * resolution_;
+            int max_y = std::min((i + 1) * resolution_, last_pixel_height);
 
             cv::Mat cur_part = threshold_image(cv::Range(min_y, max_y), cv::Range(min_x, max_x));
 
             double min, max;
             cv::minMaxLoc(cur_part, &min, &max);
 
-            cv::Mat croped = board_copy(cv::Range(min_y, max_y), cv::Range(min_x, max_x));
-            cv::Mat mat(croped.rows, croped.cols, board_copy.type(), cv::Scalar(0, 0, 255));
+            unsigned char cur_segment_flag = 0;
 
             if (min < max) {
-                segmentation_msg.data.push_back(1);
-                cv::addWeighted(croped, 0.6, mat, 0.4, 0, croped);
-            } else {
-                segmentation_msg.data.push_back(0);
+                cur_segment_flag = 1;
+            }
+
+            segmentation.data.push_back(cur_segment_flag);
+        }
+    }
+
+    std::vector<std::pair<int, int>> corner_segments_coords = {
+        {0, 0},
+        {segmentation.width - delta_, 0},
+        {segmentation.width - delta_, segmentation.height - delta_},
+        {0, segmentation.height - delta_}};
+
+    for (int i = 0; i < delta_; ++i) {
+        for (int j = 0; j < delta_; ++j) {
+            for (const auto& corner : corner_segments_coords) {
+                segmentation
+                    .data[get_index(corner.first + j, corner.second + i, segmentation.width)] = 0;
             }
         }
     }
 
-    publishCompressedImage(board_copy);
+    RCLCPP_DEBUG(this->get_logger(), "Segmentated successfully");
+
+    return segmentation;
+}
+
+std::vector<std::vector<std::pair<int, int>>> SegmentationNode::getPreviewMarkerCoords(
+    const SegmentationGrid& segmentation) {
+    std::vector<std::vector<std::pair<int, int>>> preview_marker_coords{};
+
+    for (int i = 0; i < segmentation.height; ++i) {
+        for (int j = 0; j < segmentation.width; ++j) {
+            if (!segmentation.data[get_index(j, i, segmentation.width)]) {
+                continue;
+            }
+
+            int x = j * segmentation.resolution;
+            int y = i * segmentation.resolution;
+
+            std::vector<std::pair<int, int>> cur_marker_coords = {
+                {x, y},
+                {x + segmentation.resolution, y},
+                {x + segmentation.resolution, y + segmentation.resolution},
+                {x, y + segmentation.resolution}};
+
+            preview_marker_coords.push_back(cur_marker_coords);
+        }
+    }
+
+    return preview_marker_coords;
+}
+
+void SegmentationNode::publishSegmentation(const SegmentationGrid& segmentation) {
+    wbb_msgs::msg::SegmentationGrid segmentation_msg;
+
+    segmentation_msg.width = segmentation.width;
+    segmentation_msg.height = segmentation.height;
+    segmentation_msg.resolution = segmentation.resolution;
+    segmentation_msg.data = std::move(segmentation.data);
+
     segmentation_publisher_->publish(segmentation_msg);
+}
+void SegmentationNode::publishPreviewMarkers(const SegmentationGrid& segmentation) {
+    std::vector<std::vector<std::pair<int, int>>> preview_marker_coords =
+        getPreviewMarkerCoords(segmentation);
+    foxglove_msgs::msg::ImageMarkerArray preview_msg = msg::makePolygonArray(preview_marker_coords);
+
+    preview_publisher_->publish(preview_msg);
+}
+
+void SegmentationNode::makeSegmentationOnTimer() {
+    if (board_image_.empty()) {
+        RCLCPP_DEBUG(this->get_logger(), "Got empty image. Skipping segmentation...");
+        return;
+    }
+
+    cv::Mat threshold_image = applyThreshold(board_image_);
+
+    SegmentationGrid segmentation = segment(threshold_image);
+
+    publishSegmentation(segmentation);
+    publishPreviewMarkers(segmentation);
 }
 
 }  // namespace wbb

@@ -1,6 +1,5 @@
 #include "camera/camera_node.h"
-#include "camera/detection.h"
-#include "camera/message_helper.h"
+#include "detection/detection.h"
 
 #include <std_msgs/msg/header.hpp>
 
@@ -13,7 +12,7 @@ namespace wbb {
 
 namespace {
 
-const int kBotMarkerId = 4;  // Значения с 0 до 3 -- номера маркеров на краях доски
+const int kBotMarkerId = 4;  // Values ​​from 0 to 3 are the serial numbers of markers on the corners of the board
 const float kBotMarkerSize = 0.1f;
 const float kBaseLength = 0.2f;
 const float kBaseWidth = 0.15f;

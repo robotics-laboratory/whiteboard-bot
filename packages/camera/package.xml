@@ -5,16 +5,22 @@
   <version>0.0.1</version>
   <description>Package for camera </description>
   <maintainer email="gordey.skor@mail.ru">Skorobogatov Gordei</maintainer>
-  <license>TODO:
-    License declaration</license>
+  <license>MIT</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 
   <depend>cv_bridge</depend>
+  <depend>foxglove_msgs</depend>
+  <depend>OpenCV</depend>
   <depend>rclcpp</depend>
   <depend>sensor_msgs</depend>
   <depend>std_msgs</depend>
+  <depend>visualization_msgs</depend>
   <depend>yaml_cpp_vendor</depend>
+
+  <depend>detection</depend>
+  <depend>wbb_msgs</depend>
+
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>
