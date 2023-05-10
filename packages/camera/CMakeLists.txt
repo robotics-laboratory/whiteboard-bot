@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.8)
 project(camera)
 
+add_compile_options(-Wall -Wextra -Wpedantic)
+
 # find dependencies
 find_package(ament_cmake REQUIRED)
 find_package(cv_bridge REQUIRED)

@@ -189,9 +189,9 @@ DetectionResult CameraNode::transform(const DetectionResult& detection) {
     return transformed_detection;
 }
 
-void CameraNode::publishImage(const cv::Mat& warped_image, const rclcpp::Time& capturing_time) {
+void CameraNode::publishImage(const cv::Mat& warped_image, const rclcpp::Time& captured_time) {
     sensor_msgs::msg::Image raw_msg;
-    cv_bridge::CvImage(msg::makeHeader(capturing_time), "bgr8", warped_image).toImageMsg(raw_msg);
+    cv_bridge::CvImage(msg::makeHeader(captured_time), "bgr8", warped_image).toImageMsg(raw_msg);
     image_publisher_->publish(raw_msg);
 }
 
@@ -204,12 +204,12 @@ void CameraNode::publishImageBorder(const std::vector<cv::Point2f>& border) {
 }
 
 void CameraNode::publishBotEgo(
-    const std::optional<BotPose>& bot_pose, const rclcpp::Time& capturing_time) {
+    const std::optional<BotPose>& bot_pose, const rclcpp::Time& captured_time) {
     if (!bot_pose) {
         return;
     }
 
-    const auto ego_msg = msg::toImagePose(*bot_pose, capturing_time);
+    const auto ego_msg = msg::toImagePose(*bot_pose, captured_time);
     robot_ego_publisher_->publish(ego_msg);
 }
 
@@ -218,30 +218,30 @@ void CameraNode::publishImageCorners(const std::vector<Marker>& markers) {
     image_corners_publisher_->publish(image_corners_msg);
 }
 
-void CameraNode::publishPreview(const cv::Mat& warped_image, const rclcpp::Time& capturing_time) {
+void CameraNode::publishPreview(const cv::Mat& warped_image, const rclcpp::Time& captured_time) {
     sensor_msgs::msg::CompressedImage compressed_msg;
-    cv_bridge::CvImage(msg::makeHeader(capturing_time), "bgr8", warped_image)
+    cv_bridge::CvImage(msg::makeHeader(captured_time), "bgr8", warped_image)
         .toCompressedImageMsg(compressed_msg);
     preview_publisher_->publish(compressed_msg);
 }
 
 void CameraNode::publishPreviewCorners(
-    const std::vector<Marker>& markers, const rclcpp::Time& capturing_time) {
+    const std::vector<Marker>& markers, const rclcpp::Time& captured_time) {
     std::vector<std::vector<cv::Point2f>> coords;
     for (auto marker : markers) {
         coords.push_back(marker.corners);
     }
-    const auto preview_corners_msg = msg::makeLineStripArray(kCornersMsgId, coords, capturing_time);
+    const auto preview_corners_msg = msg::makeLineStripArray(kCornersMsgId, coords, captured_time);
     preview_corners_publisher_->publish(preview_corners_msg);
 }
 
 void CameraNode::publishBotBox(
-    const std::vector<cv::Point2f>& bot_box, const rclcpp::Time& capturing_time) {
+    const std::vector<cv::Point2f>& bot_box, const rclcpp::Time& captured_time) {
     visualization_msgs::msg::ImageMarker bot_box_msg;
     if (bot_box.size() == 0) {
-        bot_box_msg = msg::makeLineStrip(kBotMsgId, bot_box, capturing_time, false, false);
+        bot_box_msg = msg::makeLineStrip(kBotMsgId, bot_box, captured_time, false, false);
     } else {
-        bot_box_msg = msg::makeLineStrip(kBotMsgId, bot_box, capturing_time);
+        bot_box_msg = msg::makeLineStrip(kBotMsgId, bot_box, captured_time);
     }
 
     preview_border_publisher_->publish(bot_box_msg);
@@ -276,7 +276,7 @@ std::vector<cv::Point2f> CameraNode::makeBotBox(const std::optional<Marker>& ego
 
 void CameraNode::handleCameraOnTimer() {
     const cv::Mat raw_image = getImage();
-    rclcpp::Time capturing_time = now();
+    rclcpp::Time captured_time = now();
 
     const cv::Mat undistorted_image = removeDistortion(raw_image);
     const DetectionResult detection = detectMarkers(undistorted_image);
@@ -290,14 +290,14 @@ void CameraNode::handleCameraOnTimer() {
     const std::optional<BotPose> bot_pose = getBotPose(transformed_detection.ego);
     const std::vector<cv::Point2f> bot_box = makeBotBox(transformed_detection.ego);
 
-    publishImage(warped_image, capturing_time);
+    publishImage(warped_image, captured_time);
     publishImageCorners(transformed_detection.corners);
     publishImageBorder(bot_box);
-    publishBotEgo(bot_pose, capturing_time);
+    publishBotEgo(bot_pose, captured_time);
 
-    publishPreview(warped_image, capturing_time);
-    publishBotBox(bot_box, capturing_time);
-    publishPreviewCorners(transformed_detection.corners, capturing_time);
+    publishPreview(warped_image, captured_time);
+    publishBotBox(bot_box, captured_time);
+    publishPreviewCorners(transformed_detection.corners, captured_time);
 }
 
 }  // namespace wbb

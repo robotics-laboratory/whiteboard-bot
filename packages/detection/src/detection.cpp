@@ -2,6 +2,7 @@
 
 #include <wbb_msgs/msg/image_point.hpp>
 
+#include <boost/assert.hpp>
 #include <std_msgs/msg/header.hpp>
 
 #include <chrono>
@@ -9,11 +10,13 @@
 namespace wbb {
 
 Marker toMarker(const wbb_msgs::msg::ImageMarkerPos& msg) {
+    BOOST_ASSERT(msg.corners.size() == 4);
+
     Marker marker;
 
     marker.id = msg.id;
     for (const auto& corner : msg.corners) {
-        marker.corners.push_back(cv::Point(corner.x, corner.y));
+        marker.corners.emplace_back(corner.x, corner.y);
     }
 
     return marker;
@@ -38,20 +41,20 @@ std::optional<Marker> toBotBox(const wbb_msgs::msg::ImageMarkerPos& msg) {
 }
 
 namespace msg {
-std_msgs::msg::Header makeHeader(const rclcpp::Time& capturing_time) {
+std_msgs::msg::Header makeHeader(const rclcpp::Time& captured_time) {
     std_msgs::msg::Header header;
     header.frame_id = "";
-    header.stamp = capturing_time;
+    header.stamp = captured_time;
 
     return header;
 }
 
 visualization_msgs::msg::ImageMarker makeLineStrip(
-    int id, const std::vector<cv::Point2f>& coords, const rclcpp::Time& capturing_time, bool close,
+    int id, const std::vector<cv::Point2f>& coords, const rclcpp::Time& captured_time, bool close,
     bool add) {
     visualization_msgs::msg::ImageMarker msg;
 
-    msg.header = makeHeader(capturing_time);
+    msg.header = makeHeader(captured_time);
     msg.ns = "marker";
     msg.id = id;
     msg.type = visualization_msgs::msg::ImageMarker::LINE_STRIP;
@@ -90,12 +93,12 @@ visualization_msgs::msg::ImageMarker makeLineStrip(
 }
 
 foxglove_msgs::msg::ImageMarkerArray makeLineStripArray(
-    int id, const std::vector<std::vector<cv::Point2f>>& markers,
-    const rclcpp::Time& capturing_time, bool close, bool add) {
+    int id, const std::vector<std::vector<cv::Point2f>>& markers, const rclcpp::Time& captured_time,
+    bool close, bool add) {
     foxglove_msgs::msg::ImageMarkerArray msg;
 
     for (const auto& marker : markers) {
-        const auto marker_msg = makeLineStrip(id, marker, capturing_time, close, add);
+        const auto marker_msg = makeLineStrip(id, marker, captured_time, close, add);
         msg.markers.push_back(marker_msg);
     }
 
@@ -109,7 +112,6 @@ visualization_msgs::msg::ImageMarker makePolygon(const std::vector<std::pair<int
     msg.type = visualization_msgs::msg::ImageMarker::POLYGON;
     msg.action = visualization_msgs::msg::ImageMarker::ADD;
 
-    geometry_msgs::msg::Point point;
     std_msgs::msg::ColorRGBA color;
 
     color.r = 1.0;
@@ -122,6 +124,7 @@ visualization_msgs::msg::ImageMarker makePolygon(const std::vector<std::pair<int
     msg.fill_color = color;
 
     for (const auto& cur_point : coords) {
+        geometry_msgs::msg::Point point;
         point.x = cur_point.first;
         point.y = cur_point.second;
         msg.points.push_back(point);
@@ -135,17 +138,16 @@ foxglove_msgs::msg::ImageMarkerArray makePolygonArray(
     foxglove_msgs::msg::ImageMarkerArray msg;
 
     for (const auto& coords : markers_coords) {
-        const auto marker_msg = makePolygon(coords);
-        msg.markers.push_back(marker_msg);
+        msg.markers.push_back(makePolygon(coords));
     }
 
     return msg;
 }
 
-wbb_msgs::msg::ImagePose toImagePose(const wbb::BotPose& pose, const rclcpp::Time& capturing_time) {
+wbb_msgs::msg::ImagePose toImagePose(const wbb::BotPose& pose, const rclcpp::Time& captured_time) {
     wbb_msgs::msg::ImagePose msg;
 
-    msg.header = makeHeader(capturing_time);
+    msg.header = makeHeader(captured_time);
     msg.x = pose.x;
     msg.y = pose.y;
     msg.theta = pose.theta;

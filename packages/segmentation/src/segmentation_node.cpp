@@ -3,6 +3,7 @@
 #include <cv_bridge/cv_bridge.h>
 #include <std_msgs/msg/header.hpp>
 
+#include <boost/assert.hpp>
 #include <opencv2/highgui.hpp>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/core.hpp>
@@ -11,8 +12,6 @@
 #include <stdio.h>
 
 namespace {
-int floor(int a, int b) { return (a + b - 1) / b; }
-
 int get_index(int x, int y, int width) { return y * width + x; }
 }  // namespace
 
@@ -103,24 +102,27 @@ SegmentationGrid SegmentationNode::segment(const cv::Mat& threshold_image) {
 
     SegmentationGrid segmentation;
 
+    BOOST_ASSERT(threshold_image.cols % resolution_ == 0);
+    BOOST_ASSERT(threshold_image.rows % resolution_ == 0);
+
     segmentation.resolution = resolution_;
-    segmentation.width = floor(threshold_image.cols, resolution_);
-    segmentation.height = floor(threshold_image.rows, resolution_);
+    segmentation.width = threshold_image.cols / resolution_;
+    segmentation.height = threshold_image.rows / resolution_;
 
-    for (int i = 0; i * resolution_ < last_pixel_height; ++i) {
-        for (int j = 0; j * resolution_ < last_pixel_width; ++j) {
-            int min_x = j * resolution_;
-            int max_x = std::min((j + 1) * resolution_, last_pixel_width);
+    for (int i = 0; i < last_pixel_height; i += resolution_) {
+        for (int j = 0; j < last_pixel_width; j += resolution_) {
+            int min_x = j;
+            int max_x = min_x + resolution_;
 
-            int min_y = i * resolution_;
-            int max_y = std::min((i + 1) * resolution_, last_pixel_height);
+            int min_y = i;
+            int max_y = min_y + resolution_;
 
             cv::Mat cur_part = threshold_image(cv::Range(min_y, max_y), cv::Range(min_x, max_x));
 
             double min, max;
             cv::minMaxLoc(cur_part, &min, &max);
 
-            unsigned char cur_segment_flag = 0;
+            uint8_t cur_segment_flag = 0;
 
             if (min < max) {
                 cur_segment_flag = 1;

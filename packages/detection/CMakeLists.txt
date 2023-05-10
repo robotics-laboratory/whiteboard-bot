@@ -1,8 +1,11 @@
 cmake_minimum_required(VERSION 3.8)
 project(detection)
 
+add_compile_options(-Wall -Wextra -Wpedantic)
+
 # find dependencies
 find_package(ament_cmake REQUIRED)
+find_package(Boost REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
@@ -30,6 +33,7 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 
 ament_export_targets(${PROJECT_NAME} HAS_LIBRARY_TARGET)
 ament_export_dependencies(
+    Boost
     foxglove_msgs
     OpenCV
     rclcpp
