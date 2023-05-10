@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.8)
 project(wbb_msgs)
 
-add_compile_options(-Wall -Wextra -Wpedantic -Werror)
+add_compile_options(-Wall -Wextra -Wpedantic)
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
@@ -13,6 +13,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   msg/ImagePoint.msg
   msg/ImageMarkerPos.msg
   msg/ImageMarkerPosArray.msg
+  msg/SegmentationGrid.msg
   DEPENDENCIES
   builtin_interfaces
   ADD_LINTER_TESTS

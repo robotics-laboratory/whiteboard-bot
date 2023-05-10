@@ -1,5 +1,6 @@
 #pragma once
 
+#include "detection/detection.h"
 #include "camera/params.h"
 #include <wbb_msgs/msg/image_pose.hpp>
 #include <wbb_msgs/msg/image_marker_pos.hpp>
@@ -29,20 +30,18 @@ class CameraNode : public rclcpp::Node {
     void tryUpdateHomography(const DetectionResult& detection);
     cv::Mat warp(const cv::Mat& undistorted_image);
     std::optional<BotPose> getBotPose(const std::optional<Marker>& ego);
+    std::vector<cv::Point2f> makeBotBox(const std::optional<Marker>& ego);
     DetectionResult transform(const DetectionResult& detection);
 
     void publishImage(const cv::Mat& warped_image, const rclcpp::Time& capturing_time);
     void publishImageCorners(const std::vector<Marker>& markers);
     void publishImageBorder(const std::vector<cv::Point2f>& border);
-    void publishRobotEgo(const std::optional<BotPose>& ego, const rclcpp::Time& capturing_time);
+    void publishBotEgo(const std::optional<BotPose>& ego, const rclcpp::Time& capturing_time);
 
     void publishPreview(const cv::Mat& warped_image, const rclcpp::Time& capturing_time);
     void publishPreviewCorners(
         const std::vector<Marker>& markers, const rclcpp::Time& capturing_time);
-    void publishRobotBorder(
-        const std::vector<cv::Point2f>& border, const rclcpp::Time& capturing_time);
-
-    std::vector<cv::Point2f> getBorder(const std::optional<Marker>& ego);
+    void publishBotBox(const std::vector<cv::Point2f>& border, const rclcpp::Time& capturing_time);
 
     rclcpp::TimerBase::SharedPtr timer_;
     rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr image_publisher_ = nullptr;
