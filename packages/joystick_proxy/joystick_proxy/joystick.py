@@ -28,8 +28,10 @@ class Joystick(Node):
     def handleJoystick(self, msg):
         curv = msg.axes[self.joy_map["curvature_axis"]] * self.max_curv
         vel = msg.axes[self.joy_map["velocity_axis"]]
-        if (abs(vel) < self.min_velocity):
+        if abs(vel) < self.min_velocity:
             vel = 0.0  # stop
+
+        #self.get_logger().info('curv: %f; vel: %f' % (curv, vel))
 
         control = Control()
         control.curvature = curv

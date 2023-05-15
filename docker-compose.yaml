@@ -4,6 +4,7 @@ services:
   wbb-amd64:
     container_name: wbb
     image: cr.yandex/crp8hpfj5tuhlaodm4dl/wbb:0.1.0-amd64
+    platform: linux/x86_64
     stdin_open: true
     privileged: true
     tty: true
@@ -17,11 +18,11 @@ services:
     - "9090:9090"
     volumes:
       - "${PWD}:/wbb"
-      - "/dev:/dev"
 
   wbb-arm64v8:
     container_name: wbb
     image: cr.yandex/crp8hpfj5tuhlaodm4dl/wbb:0.1.0-arm64v8
+    platform: linux/arm64/v8
     stdin_open: true
     privileged: true
     tty: true
