@@ -9,8 +9,6 @@ from rclpy.node import Node
 
 from wbb_msgs.msg import Control
 
-rclpy.init()
-
 
 class Direction(IntEnum):
     FWD = 0
@@ -40,10 +38,7 @@ class ControlNode(Node):
         )
 
 
-node = ControlNode()
-
-
-async def loop():
+async def loop(node):
     await node.init_conn()
     while rclpy.ok():
         rclpy.spin_once(node, timeout_sec=0)
@@ -51,7 +46,9 @@ async def loop():
 
 
 def main():
-    asyncio.run(loop())
+    rclpy.init()
+    node = ControlNode()
+    asyncio.run(loop(node))
 
 
 if __name__ == "__main__":
