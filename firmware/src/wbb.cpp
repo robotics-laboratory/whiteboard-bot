@@ -4,6 +4,7 @@
 #include <ESPAsyncWebServer.h>
 #include "ESPmDNS.h"
 #include <atomic>
+#include "l298n.cpp"
 
 constexpr int L298N_LEFT_MOTOR_IN1_PIN = 33;
 constexpr int L298N_LEFT_MOTOR_IN2_PIN = 32;
@@ -69,7 +70,9 @@ enum Direction
 
 static std::atomic<Direction> dir(STOP);
 
-int rotationRadius(int radius, bool is_left)
+L298N driver(L298N_LEFT_MOTOR_IN1_PIN, L298N_LEFT_MOTOR_IN2_PIN, L298N_RIGHT_MOTOR_IN3_PIN, L298N_RIGHT_MOTOR_IN4_PIN);
+
+/*int rotationRadius(int radius, bool is_left)
 {
     if (is_left)
         return radius - ROBOT_BASE_MM / 2;
@@ -88,9 +91,16 @@ int calcDiffDirection(int radius, bool is_left)
 int calcSpeed(int radius, bool is_left)
 {
     return calcDiffDirection(radius, is_left);
+}*/
+
+int getVelocity(float coeff, int vel, bool is_left)
+{
+    if (is_left)
+        return (1 - coeff * ROBOT_BASE_MM / 2) * vel;
+    return (1 + coeff * ROBOT_BASE_MM / 2) * vel;
 }
 
-void setTargetSpeed(float coeff)
+/*void setTargetSpeed(float coeff)
 {
     Direction cur_dir = dir.load();
     if (cur_dir == STOP)
@@ -140,7 +150,7 @@ void setTargetSpeed(float coeff)
         dir.store(cur_dir);
 
     // Otherwise the direction is FWD or STOP
-}
+}*/
 
 void IRAM_ATTR onTimeout()
 {
@@ -158,7 +168,7 @@ void go(bool dir1, bool dir2, bool dir3, bool dir4)
     fwd4 = dir4;
 }
 
-void updateL298N(Direction dir)
+/*void updateL298N(Direction dir)
 {
     switch(dir)
     {
@@ -178,19 +188,23 @@ void updateL298N(Direction dir)
             go(true, false, false, true);
             break;
     }
-}
+}*/
 
-void switchState()
+/*void switchState()
 {
-    updateL298N(dir.load());
-}
+    //updateL298N(dir.load());
+    if (target_speed_left.load() == 0 && target_speed_right.load() == 0)
+    {
+        go(true, true, true, true);
+    }
+}*/
 
 int smoothMovement(int speed, int target)
 {
     // We need to update motors spin direction
     if (speed == 0)
     {
-        switchState();
+        driver.update(target_speed_left.load(), target_speed_right.load());
     }
 
     if (speed < target)
@@ -251,10 +265,20 @@ void event(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType ty
                 
         diff_coeff.store(atof(tok));
 
-        if (abs(diff_coeff) < min_diff_coeff)
-            diff_coeff.store(min_diff_coeff);
+        tok = strtok(NULL, ";");
+        if (tok == NULL)
+        {
+            Serial.println("Wrong message format");
+            return;
+        }
 
-        setTargetSpeed(diff_coeff.load());
+        //if (abs(diff_coeff) < min_diff_coeff)
+        //    diff_coeff.store(min_diff_coeff);
+
+        //setTargetSpeed(diff_coeff.load());
+        int base_vel = int(atof(tok) * 255);
+        target_speed_left.store(getVelocity(diff_coeff.load(), base_vel, true));
+        target_speed_right.store(getVelocity(diff_coeff.load(), base_vel, false));
 
         if (code <= 1)
         {
@@ -284,10 +308,7 @@ int mapMaxSpeed(int speed, int max)
 
 void spinMotors()
 {
-    digitalWrite(L298N_LEFT_MOTOR_IN1_PIN, fwd1);
-    digitalWrite(L298N_LEFT_MOTOR_IN2_PIN, fwd2);
-    digitalWrite(L298N_RIGHT_MOTOR_IN3_PIN, fwd3);
-    digitalWrite(L298N_RIGHT_MOTOR_IN4_PIN, fwd4);
+    driver.write();
     analogWrite(L298N_LEFT_MOTOR_SPEED_PIN, mapMaxSpeed(abs(speed_left), motor_a_max));
     analogWrite(L298N_RIGHT_MOTOR_SPEED_PIN, mapMaxSpeed(abs(speed_right), motor_b_max));
     //Serial.printf("Targets: %d/%d, %d/%d\n", speed_left, target_speed_left.load(), speed_right, target_speed_right.load());
