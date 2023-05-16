@@ -16,6 +16,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   msg/ImageMarkerPos.msg
   msg/ImageMarkerPosArray.msg
   msg/Control.msg
+  msg/Eraser.msg
   DEPENDENCIES
   builtin_interfaces
   geometry_msgs

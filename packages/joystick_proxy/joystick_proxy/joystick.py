@@ -10,7 +10,7 @@ class Joystick(Node):
     def __init__(self):
         super(Joystick, self).__init__('joystick')
         self.sub = self.create_subscription(Joy, "/joy", self.handleJoystick, 10)
-        self.pub = self.create_publisher(Control, "/control", 10)
+        self.pub = self.create_publisher(Control, "/movement", 10)
 
         # Path to the joy control map yaml file
         self.declare_parameter('control_map', None)

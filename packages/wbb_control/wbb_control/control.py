@@ -7,34 +7,47 @@ import rclpy
 import websockets
 from rclpy.node import Node
 
-from wbb_msgs.msg import Control
+from wbb_msgs.msg import Control, Eraser
 
 
-class Direction(IntEnum):
-    FWD = 0
-    BACK = 1
-    STOP = 2
+class Command(IntEnum):
+    MOVE = 0
+    ERASER_UP = 1
+    ERASER_DOWN = 2
 
 
 class ControlNode(Node):
     def __init__(self):
         super(ControlNode, self).__init__("control")
         self.declare_parameter("esp32_ip", "192.168.1.121")
-        self.sub = self.create_subscription(Control, "/control", self.send, 10)
+        self.move_sub = self.create_subscription(Control, "/movement", self.send, 10)
+        self.eraser_sub = self.create_subscription(Eraser, "/eraser", self.send, 10)
+        self.eraser_up = True
+        self.lock = asyncio.Lock()
 
     async def init_conn(self):
         ip = self.get_parameter("esp32_ip").value
         self.ws = await websockets.connect("wss://" + ip + "/ws", port=80, ssl=False)
 
     async def send(self, msg):
-        d = Direction.STOP
-        if msg.velocity > 0:
-            d = Direction.FWD
-        elif msg.velocity < 0:
-            d = Direction.BACK
+        await self.ws.send(
+            str(int(Command.MOVE)) + ";" + str(round(float(msg.curvature), 6)) + ";" + str(round(float(msg.velocity), 6))
+        )
+
+    async def move_eraser(self, msg):
+        async with self.lock:
+            if msg.toggle:
+                self.eraser_up = not self.eraser_up
+            else:
+                self.eraser_up = msg.up
+
+        cmd = Command.ERASER_DOWN
+        if self.eraser_up:
+            cmd = Command.ERASER_UP
 
         await self.ws.send(
-            str(int(d)) + ";" + str(round(float(msg.curvature), 6)) + ";"
+            str(int(Command.MOVE)) + ";" + str(round(float(msg.curvature), 6)) + ";" + str(
+                round(float(msg.velocity), 6))
         )
 
 
