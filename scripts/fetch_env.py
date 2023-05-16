@@ -1,5 +1,3 @@
-import os
-
 # import pio environment
 Import("env")
 

@@ -16,13 +16,9 @@ constexpr int L298N_RIGHT_MOTOR_SPEED_PIN = 14;
 constexpr float LEFT_MOTOR_MAX_SPEED = 1.0;
 constexpr float RIGHT_MOTOR_MAX_SPEED = 1.0;
 
-constexpr int MOTOR_MAX_SPEED_MMPS = 100; // Max motor speed in millimeter
 constexpr int MOTOR_SPINUP_TIME_MAX_SPEED_MS = 250; // Smoothly increasing/decreasing motor speed for x milliseconds to the top speed
 
-constexpr int ROBOT_BASE_MM = 80;
-
-constexpr int VELOCITY_RAD_SEC = 5;  // Velocity (in radians/seconds) for each wheel
-constexpr int MAX_SPEED_MM_S = 500;  // Max linear speed (in mm/s)
+constexpr float WHEEL_BASE_WIDTH_M = 0.08;
 
 constexpr char* MDNS_DEVICE = "wbb-bot";
 constexpr char* SERVICE_NAME = "ws-control";
@@ -39,11 +35,6 @@ const char* password = WIFI_PASSWD;
 AsyncWebServer server(80);
 AsyncWebSocket ws("/ws");
 
-bool fwd1 = true;
-bool fwd2 = true;
-bool fwd3 = true;
-bool fwd4 = true;
-
 int speed_left = 0;
 int speed_right = 0;
 
@@ -53,8 +44,7 @@ int motor_b_max = RIGHT_MOTOR_MAX_SPEED * 255;
 static std::atomic<int> target_speed_left(0);
 static std::atomic<int> target_speed_right(0);
 
-constexpr float min_diff_coeff = 0.0001;
-static std::atomic<float> diff_coeff(min_diff_coeff); // 1/radius
+static std::atomic<float> curvature(0); // 1/radius
 
 int spinup_delay = MOTOR_SPINUP_TIME_MAX_SPEED_MS / 255; // Calculating spinup delay for 1 step
 unsigned long loop_time = 0;
@@ -77,25 +67,17 @@ int bound(int velocity)
     return velocity;
 }
 
-int getVelocity(float coeff, int vel, bool is_left)
+int getVelocity(float curv, int vel, bool is_left)
 {
     if (is_left)
-        return bound(int((1 - coeff * ROBOT_BASE_MM / 2) * vel));
-    return bound(int((1 + coeff * ROBOT_BASE_MM / 2) * vel));
+        return bound(int((1 - curv * WHEEL_BASE_WIDTH_M / 2) * vel));
+    return bound(int((1 + curv * WHEEL_BASE_WIDTH_M / 2) * vel));
 }
 
 void IRAM_ATTR onTimeout()
 {
     target_speed_left.store(0);
     target_speed_right.store(0);
-}
-
-void go(bool dir1, bool dir2, bool dir3, bool dir4)
-{
-    fwd1 = dir1;
-    fwd2 = dir2;
-    fwd3 = dir3;
-    fwd4 = dir4;
 }
 
 int smoothMovement(int speed, int target)
@@ -123,14 +105,14 @@ void handleMovementCommand()
 {
     char* tok = strtok(NULL, ";");
 
-    // Coefficient
+    // Curvature
     if (tok == NULL)
     {
         Serial.println("Wrong message format");
         return;
     }
 
-    diff_coeff.store(atof(tok));
+    curvature.store(atof(tok));
 
     tok = strtok(NULL, ";");
 
@@ -142,8 +124,8 @@ void handleMovementCommand()
     }
 
     int base_vel = int(atof(tok) * 255);
-    target_speed_left.store(getVelocity(diff_coeff.load(), base_vel, true));
-    target_speed_right.store(getVelocity(diff_coeff.load(), base_vel, false));
+    target_speed_left.store(getVelocity(curvature.load(), base_vel, true));
+    target_speed_right.store(getVelocity(curvature.load(), base_vel, false));
 
     if (base_vel == 0)
     {
@@ -216,6 +198,13 @@ void spinMotors()
     analogWrite(L298N_RIGHT_MOTOR_SPEED_PIN, mapMaxSpeed(abs(speed_right), motor_b_max));
 }
 
+void spinOnce(bool fwd1, bool fwd2, bool fwd3, bool fwd4)
+{
+    driver.writeOnce(fwd1, fwd2, fwd3, fwd4);
+    analogWrite(L298N_LEFT_MOTOR_SPEED_PIN, mapMaxSpeed(abs(speed_left), motor_a_max));
+    analogWrite(L298N_RIGHT_MOTOR_SPEED_PIN, mapMaxSpeed(abs(speed_right), motor_b_max));
+}
+
 void setup()
 {
     pinMode(L298N_LEFT_MOTOR_IN1_PIN, OUTPUT);
@@ -228,13 +217,12 @@ void setup()
     // motors check
     speed_left = 100;
     speed_right = 100;
-    go(false, true, false, true);
-    spinMotors();
+    spinOnce(false, true, false, true);
     delay(300);
-    go(true, true, true, true);
-    spinMotors();
+    spinOnce(true, true, true, true);
     speed_left = 0;
     speed_right = 0;
+    spinMotors();
 
     Serial.begin(9600);
 

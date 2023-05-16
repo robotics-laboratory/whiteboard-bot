@@ -1,11 +1,7 @@
 # Sensitive env variables
 .env
-
 .pio
-
 .vscode
-
-
 /build
 /log
 /install

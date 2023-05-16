@@ -12,6 +12,7 @@ class L298N_DRIVER {
     };
     void update(int velocity_left, int velocity_right);
     void writeStatus();
+    void writeOnce(bool fwd1, bool fwd2, bool fwd3, bool fwd4);
   private:
     void _updateStatus(bool fwd1, bool fwd2, bool fwd3, bool fwd4);
     bool state[4];

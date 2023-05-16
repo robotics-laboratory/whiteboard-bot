@@ -44,3 +44,10 @@ void L298N_DRIVER::update(int velocity_left, int velocity_right)
         state[3] = true;
     }
 }
+void L298N_DRIVER::writeOnce(bool fwd1, bool fwd2, bool fwd3, bool fwd4)
+{
+    digitalWrite(_IN1, fwd1);
+    digitalWrite(_IN2, fwd2);
+    digitalWrite(_IN3, fwd3);
+    digitalWrite(_IN4, fwd4);
+}
