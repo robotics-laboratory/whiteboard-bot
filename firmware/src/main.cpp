@@ -4,6 +4,7 @@
 #include <ESPAsyncWebServer.h>
 #include "ESPmDNS.h"
 #include <atomic>
+#include <Servo.h>
 #include "l298n_driver.h"
 
 constexpr int L298N_LEFT_MOTOR_IN1_PIN = 33;
@@ -12,6 +13,10 @@ constexpr int L298N_RIGHT_MOTOR_IN3_PIN = 26;
 constexpr int L298N_RIGHT_MOTOR_IN4_PIN = 25;
 constexpr int L298N_LEFT_MOTOR_SPEED_PIN = 27;
 constexpr int L298N_RIGHT_MOTOR_SPEED_PIN = 14;
+constexpr int ERASER_SERVO_PIN = 35;
+
+constexpr int ERASER_SERVO_ENGAGED_ANGLE = 50;
+constexpr int ERASER_SERVO_DISENGAGED_ANGLE = 80;
 
 constexpr float LEFT_MOTOR_MAX_SPEED = 1.0;
 constexpr float RIGHT_MOTOR_MAX_SPEED = 1.0;
@@ -48,6 +53,9 @@ static std::atomic<float> curvature(0); // 1/radius
 
 int spinup_delay = MOTOR_SPINUP_TIME_MAX_SPEED_MS / 255; // Calculating spinup delay for 1 step
 unsigned long loop_time = 0;
+
+Servo eraser;
+static std::atomic<int> eraser_servo_angle(ERASER_SERVO_ENGAGED_ANGLE);
 
 enum Command
 {
@@ -183,6 +191,12 @@ void event(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType ty
         case MOVE:
             handleMovementCommand();
             break;
+        case ERASER_UP:
+            eraser_servo_angle.store(ERASER_SERVO_ENGAGED_ANGLE);
+            break;
+        case ERASER_DOWN:
+            eraser_servo_angle.store(ERASER_SERVO_DISENGAGED_ANGLE);
+            break;
     }
 }
 
@@ -213,6 +227,8 @@ void setup()
     pinMode(L298N_RIGHT_MOTOR_IN4_PIN, OUTPUT);
     pinMode(L298N_LEFT_MOTOR_SPEED_PIN, OUTPUT);
     pinMode(L298N_RIGHT_MOTOR_SPEED_PIN, OUTPUT);
+
+    eraser.attach(ERASER_SERVO_PIN);
 
     // motors check
     speed_left = 100;
@@ -255,6 +271,7 @@ void loop()
     speed_right = smoothMovement(speed_right, target_speed_right.load());
 
     spinMotors();
+    eraser.write(eraser_servo_angle.load());
 
     delay(max(1, spinup_delay - int(millis() - loop_time)));
 
