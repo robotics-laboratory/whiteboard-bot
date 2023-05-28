@@ -15,13 +15,6 @@
 
 namespace wbb {
 
-struct SegmentationGrid {
-    int resolution = 0;
-    int width = 0;
-    int height = 0;
-    std::vector<uint8_t> data{};
-};
-
 class SegmentationNode : public rclcpp::Node {
   public:
     SegmentationNode();

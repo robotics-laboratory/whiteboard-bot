@@ -1,0 +1,11 @@
+launch:
+- arg:
+    name: "simulation"
+    default: "false"
+- node:
+    pkg: "planner"
+    exec: "planner"
+    name: "planner"
+    param:
+    - {name: "period", value: 200}
+    - {name: "use_sim_time", value: "$(var simulation)"}
