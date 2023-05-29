@@ -45,10 +45,7 @@ class ControlNode(Node):
         if self.eraser_up:
             cmd = Command.ERASER_UP
 
-        await self.ws.send(
-            str(int(Command.MOVE)) + ";" + str(round(float(msg.curvature), 6)) + ";" + str(
-                round(float(msg.velocity), 6))
-        )
+        await self.ws.send(str(int(cmd)) + ";")
 
 
 async def loop(node):
