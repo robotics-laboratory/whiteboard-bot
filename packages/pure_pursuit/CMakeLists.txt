@@ -1,9 +1,7 @@
 cmake_minimum_required(VERSION 3.8)
 project(pure_pursuit)
 
-if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-  add_compile_options(-Wall -Wextra -Wpedantic)
-endif()
+add_compile_options(-Wall -Wextra -Wpedantic)
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
@@ -14,12 +12,15 @@ find_package(wbb_msgs REQUIRED)
 # find_package(<dependency> REQUIRED)
 
 add_executable(pursuit src/main.cpp src/pursuit.cpp)
+
 target_include_directories(pursuit PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-  $<INSTALL_INTERFACE:include>)
+  $<INSTALL_INTERFACE:include/${PROJECT_NAME}>)
+
 target_compile_features(pursuit PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
 
 ament_target_dependencies(
+    pursuit
     rclcpp
     wbb_msgs )
 

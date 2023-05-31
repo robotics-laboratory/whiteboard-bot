@@ -1,7 +1,7 @@
 #pragma once
 
 #include <chrono>
-#include <math>
+#include <cmath>
 
 #include <wbb_msgs/msg/image_path.hpp>
 #include <wbb_msgs/msg/image_pose.hpp>
