@@ -43,7 +43,7 @@ double calculateDistance(wbb_msgs::msg::ImagePoint first,
                      std::pow(first->y - second->y, 2));
 }
 
-double PurePursuit::calculateCurvature(wbb_msgs::msg::ImagePoint::SharedPtr lookahead,
+double PurePursuit::calculateCurvature(wbb_msgs::msg::ImagePoint lookahead,
                                        wbb_msgs::msg::ImagePose::SharedPtr bot_pose)
 {
     double chord = calculateDistance(lookahead, bot_pose);
@@ -51,7 +51,7 @@ double PurePursuit::calculateCurvature(wbb_msgs::msg::ImagePoint::SharedPtr look
     if (chord == 0)
         return 0;
 
-    double alpha = std::atan2(lookahead->y - bot_pose->y, lookahead->x - bot_pose->x) -
+    double alpha = std::atan2(lookahead.y - bot_pose->y, lookahead.x - bot_pose->x) -
                    M_PI / 2 + bot_pose->theta;
 
     if (std::cos(alpha) > 0)
@@ -65,7 +65,7 @@ wbb_msgs::msg::ImagePoint::SharedPtr findClosest(wbb_msgs::msg::ImagePath::Share
                                                  wbb_msgs::msg::ImagePose::SharedPtr bot_pose)
 {
     double min_dist = calculateDistance(trajectory->points[0], bot_pose);
-    wbb_msgs::msg::ImagePoint::SharedPtr min_point = trajectory->points[0];
+    wbb_msgs::msg::ImagePoint min_point = trajectory->points[0];
 
     for (auto point : trajectory->points)
     {
@@ -82,15 +82,15 @@ wbb_msgs::msg::ImagePoint::SharedPtr findClosest(wbb_msgs::msg::ImagePath::Share
 
 wbb_msgs::msg::ImagePoint::SharedPtr checkSegment(wbb_msgs::msg::ImagePoint start,
                                                   wbb_msgs::msg::ImagePoint end,
-                                                  wbb_msgs::msg::ImagePose bot_pose)
+                                                  wbb_msgs::msg::ImagePose::SharedPtr bot_pose)
 {
-    double vector_dot_a = std::pow(end->x - start->x, 2) + std::pow(end->y - start->y, 2);
+    double vector_dot_a = std::pow(end.x - start.x, 2) + std::pow(end.y - start.y, 2);
 
-    double vector_dot_b = 2 * (start->x - bot_pose->x) * (end->x - start->x) +
-                          2 * (start->y - bot_pose->y) * (end->y - start->y);
+    double vector_dot_b = 2 * (start.x - bot_pose.x) * (end.x - start.x) +
+                          2 * (start.y - bot_pose.y) * (end.y - start.y);
 
-    double vector_dot_c = std::pow(start->x - bot_pose->x, 2) +
-                          std::pow(start->y - bot_pose->y, 2) - std::pow(self.lookahead, 2);
+    double vector_dot_c = std::pow(start.x - bot_pose.x, 2) +
+                          std::pow(start.y - bot_pose.y, 2) - std::pow(self.lookahead, 2);
 
     double discr = std::pow(vector_dot_b, 2) - 4 * vector_dot_a * vector_dot_c;
 
@@ -105,15 +105,15 @@ wbb_msgs::msg::ImagePoint::SharedPtr checkSegment(wbb_msgs::msg::ImagePoint star
     if (t1 >= 0 && t1 <= 1)
     {
         wbb_msgs::msg::ImagePoint pt;
-        pt->x = start->x + t1 * (end->x - start->x);
-        pt->y = start->y + t1 * (end->y - start->y);
+        pt.x = start.x + t1 * (end.x - start.x);
+        pt.y = start.y + t1 * (end.y - start.y);
         return pt;
     }
     if (t2 >= 0 && t2 <= 1)
     {
         wbb_msgs::msg::ImagePoint pt;
-        pt->x = start->x + t2 * (end->x - start->x);
-        pt->y = start->y + t2 * (end->y - start->y);
+        pt.x = start.x + t2 * (end.x - start.x);
+        pt.y = start.y + t2 * (end.y - start.y);
         return pt;
     }
 
