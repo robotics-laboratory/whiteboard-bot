@@ -158,7 +158,7 @@ void PurePursuit::visualizeLookahead(wbb_msgs::msg::ImagePoint::SharedPtr lookah
     pt.y = lookahead->y;
 
     vis_msg.position = pt;
-    vis_msg.lifetime = timeout_;
+    //vis_msg.lifetime = timeout_;
 
     signal_.visual->publish(vis_msg);
 }
@@ -201,7 +201,7 @@ void PurePursuit::visualizeRadius(double curvature, wbb_msgs::msg::ImagePose::Sh
     vis_msg.filled = 0;
     vis_msg.scale = int(radius);
 
-    vis_msg.lifetime = timeout_;
+    //vis_msg.lifetime = timeout_;
 
     signal_.visual->publish(vis_msg);
 }
