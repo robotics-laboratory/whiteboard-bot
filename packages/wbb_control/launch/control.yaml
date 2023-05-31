@@ -1,0 +1,7 @@
+launch:
+- node:
+    pkg: "wbb_control"
+    exec: "control"
+    name: "control"
+    param:
+    - {name: "esp32_ip", value: "192.168.1.121"}

@@ -1,0 +1,5 @@
+velocity_axis: 1
+curvature_axis: 2
+off_button: 0 # square
+remote_button: 1 # X
+auto_button: 2 # O

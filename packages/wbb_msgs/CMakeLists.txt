@@ -7,6 +7,8 @@ add_compile_options(-Wall -Wextra -Wpedantic)
 find_package(ament_cmake REQUIRED)
 find_package(builtin_interfaces REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
+find_package(geometry_msgs REQUIRED)
+find_package(rosidl_default_generators REQUIRED)
 
 rosidl_generate_interfaces(${PROJECT_NAME} 
   msg/ImagePose.msg
@@ -14,8 +16,11 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   msg/ImageMarkerPos.msg
   msg/ImageMarkerPosArray.msg
   msg/SegmentationGrid.msg
+  msg/Control.msg
+  msg/Eraser.msg
   DEPENDENCIES
   builtin_interfaces
+  geometry_msgs
   ADD_LINTER_TESTS
 )
 
