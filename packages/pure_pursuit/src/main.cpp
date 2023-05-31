@@ -5,7 +5,7 @@
 int main(int argc, char ** argv)
 {
     rclcpp::init(argc, argv);
-    rclcpp::spin(std::make_shared<PurePursuit>());
+    rclcpp::spin(std::make_shared<wbb::PurePursuit>());
     rclcpp::shutdown();
     return 0;
 }
