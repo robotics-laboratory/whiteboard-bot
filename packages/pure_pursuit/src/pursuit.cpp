@@ -36,14 +36,14 @@ void PurePursuit::handleBotPose(wbb_msgs::msg::ImagePose::SharedPtr bot_pose)
     state_.bot_pose = std::move(bot_pose);
 }
 
-double calculateDistance(wbb_msgs::msg::ImagePoint first,
-                         wbb_msgs::msg::ImagePose second)
+double calculateDistance(wbb_msgs::msg::ImagePoint::SharedPtr first,
+                         wbb_msgs::msg::ImagePose::SharedPtr second)
 {
     return std::sqrt(std::pow(first->x - second->x, 2) +
                      std::pow(first->y - second->y, 2));
 }
 
-double PurePursuit::calculateCurvature(wbb_msgs::msg::ImagePoint lookahead,
+double PurePursuit::calculateCurvature(wbb_msgs::msg::ImagePoint::SharedPtr lookahead,
                                        wbb_msgs::msg::ImagePose::SharedPtr bot_pose)
 {
     double chord = calculateDistance(lookahead, bot_pose);
@@ -51,7 +51,7 @@ double PurePursuit::calculateCurvature(wbb_msgs::msg::ImagePoint lookahead,
     if (chord == 0)
         return 0;
 
-    double alpha = std::atan2(lookahead.y - bot_pose->y, lookahead.x - bot_pose->x) -
+    double alpha = std::atan2(lookahead->y - bot_pose->y, lookahead->x - bot_pose->x) -
                    M_PI / 2 + bot_pose->theta;
 
     if (std::cos(alpha) > 0)
@@ -59,9 +59,7 @@ double PurePursuit::calculateCurvature(wbb_msgs::msg::ImagePoint lookahead,
     return -(2 * std::abs(std::sin(alpha))) / chord;
 }
 
-
-
-wbb_msgs::msg::ImagePoint::SharedPtr findClosest(wbb_msgs::msg::ImagePath::SharedPtr trajectory,
+/*wbb_msgs::msg::ImagePoint findClosest(wbb_msgs::msg::ImagePath::SharedPtr trajectory,
                                                  wbb_msgs::msg::ImagePose::SharedPtr bot_pose)
 {
     double min_dist = calculateDistance(trajectory->points[0], bot_pose);
@@ -78,7 +76,7 @@ wbb_msgs::msg::ImagePoint::SharedPtr findClosest(wbb_msgs::msg::ImagePath::Share
     }
 
     return min_point;
-}
+}*/
 
 wbb_msgs::msg::ImagePoint::SharedPtr checkSegment(wbb_msgs::msg::ImagePoint start,
                                                   wbb_msgs::msg::ImagePoint end,
@@ -86,11 +84,11 @@ wbb_msgs::msg::ImagePoint::SharedPtr checkSegment(wbb_msgs::msg::ImagePoint star
 {
     double vector_dot_a = std::pow(end.x - start.x, 2) + std::pow(end.y - start.y, 2);
 
-    double vector_dot_b = 2 * (start.x - bot_pose.x) * (end.x - start.x) +
-                          2 * (start.y - bot_pose.y) * (end.y - start.y);
+    double vector_dot_b = 2 * (start.x - bot_pose->x) * (end.x - start.x) +
+                          2 * (start.y - bot_pose->y) * (end.y - start.y);
 
-    double vector_dot_c = std::pow(start.x - bot_pose.x, 2) +
-                          std::pow(start.y - bot_pose.y, 2) - std::pow(self.lookahead, 2);
+    double vector_dot_c = std::pow(start.x - bot_pose->x, 2) +
+                          std::pow(start.y - bot_pose->y, 2) - std::pow(self.lookahead, 2);
 
     double discr = std::pow(vector_dot_b, 2) - 4 * vector_dot_a * vector_dot_c;
 
@@ -107,14 +105,14 @@ wbb_msgs::msg::ImagePoint::SharedPtr checkSegment(wbb_msgs::msg::ImagePoint star
         wbb_msgs::msg::ImagePoint pt;
         pt.x = start.x + t1 * (end.x - start.x);
         pt.y = start.y + t1 * (end.y - start.y);
-        return pt;
+        return std::make_shared<wbb_msgs::msg::ImagePoint>(pt);
     }
     if (t2 >= 0 && t2 <= 1)
     {
         wbb_msgs::msg::ImagePoint pt;
         pt.x = start.x + t2 * (end.x - start.x);
         pt.y = start.y + t2 * (end.y - start.y);
-        return pt;
+        return std::make_shared<wbb_msgs::msg::ImagePoint>(pt);
     }
 
     return nullptr;
@@ -125,7 +123,7 @@ wbb_msgs::msg::ImagePoint::SharedPtr findLookahead(wbb_msgs::msg::ImagePath::Sha
 {
     for (size_t i = 1; i < trajectory->points.size(); i++)
     {
-        wbb_msgs::msg::ImagePoint pt = checkSegment(trajectory->points[i - 1], trajectory->points[i], bot_pose);
+        wbb_msgs::msg::ImagePoint::SharedPtr pt = checkSegment(trajectory->points[i - 1], trajectory->points[i], bot_pose);
         if (!pt)
             continue;
 
@@ -151,7 +149,7 @@ void PurePursuit::sendControlCommand()
         return;
     }
 
-    wbb_msgs::msg::ImagePoint lh = findLookahead(state_.trajectory, state_.bot_pose);
+    wbb_msgs::msg::ImagePoint::SharedPtr lh = findLookahead(state_.trajectory, state_.bot_pose);
 
     if (!lh)
     {
