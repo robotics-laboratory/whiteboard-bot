@@ -2,6 +2,7 @@
 
 #include <chrono>
 #include <cmath>
+#include <functional>
 
 #include <wbb_msgs/msg/image_path.hpp>
 #include <wbb_msgs/msg/image_pose.hpp>
@@ -11,30 +12,32 @@
 namespace wbb
 {
 
+using namespace std::placeholders;
+
 class PurePursuit : public rclcpp::Node
 {
   public:
-    PurePursuit() : Node("pure_pursuit");
+    PurePursuit();
   private:
     void handleTrajectory(wbb_msgs::msg::ImagePath::SharedPtr trajectory);
 
-    void handleBotPose(wbb_msgs::msg::ImagePos::SharedPtr bot_pose);
+    void handleBotPose(wbb_msgs::msg::ImagePose::SharedPtr bot_pose);
 
     double calculateDistance(wbb_msgs::msg::ImagePoint::SharedPtr first,
-                             wbb_msgs::msg::ImagePos::SharedPtr second);
+                             wbb_msgs::msg::ImagePose::SharedPtr second);
 
     double calculateCurvature(wbb_msgs::msg::ImagePoint::SharedPtr lookahead,
-                              wbb_msgs::msg::ImagePos::SharedPtr bot_pose);
+                              wbb_msgs::msg::ImagePose::SharedPtr bot_pose);
 
     wbb_msgs::msg::ImagePoint::SharedPtr findClosest(wbb_msgs::msg::ImagePath::SharedPtr trajectory,
-                                                     wbb_msgs::msg::ImagePos::SharedPtr bot_pose);
+                                                     wbb_msgs::msg::ImagePose::SharedPtr bot_pose);
 
     wbb_msgs::msg::ImagePoint::SharedPtr checkSegment(wbb_msgs::msg::ImagePoint::SharedPtr start,
                                                       wbb_msgs::msg::ImagePoint::SharedPtr end,
-                                                      wbb_msgs::msg::ImagePos::SharedPtr bot_pose);
+                                                      wbb_msgs::msg::ImagePose::SharedPtr bot_pose);
 
     wbb_msgs::msg::ImagePoint::SharedPtr findLookahead(wbb_msgs::msg::ImagePath::SharedPtr trajectory,
-                                                       wbb_msgs::msg::ImagePos::SharedPtr bot_pose);
+                                                       wbb_msgs::msg::ImagePose::SharedPtr bot_pose);
 
     void sendControlCommand();
 
