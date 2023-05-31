@@ -37,7 +37,7 @@ void PurePursuit::handleBotPose(wbb_msgs::msg::ImagePose::SharedPtr bot_pose)
     state_.bot_pose = std::move(bot_pose);
 }
 
-double calculateDistance(wbb_msgs::msg::ImagePoint::SharedPtr first,
+double PurePursuit::calculateDistance(wbb_msgs::msg::ImagePoint::SharedPtr first,
                          wbb_msgs::msg::ImagePose::SharedPtr second)
 {
     return std::sqrt(std::pow(first->x - second->x, 2) +
@@ -79,7 +79,7 @@ double PurePursuit::calculateCurvature(wbb_msgs::msg::ImagePoint::SharedPtr look
     return min_point;
 }*/
 
-wbb_msgs::msg::ImagePoint::SharedPtr checkSegment(wbb_msgs::msg::ImagePoint start,
+wbb_msgs::msg::ImagePoint::SharedPtr PurePursuit::checkSegment(wbb_msgs::msg::ImagePoint start,
                                                   wbb_msgs::msg::ImagePoint end,
                                                   wbb_msgs::msg::ImagePose::SharedPtr bot_pose)
 {
@@ -119,7 +119,7 @@ wbb_msgs::msg::ImagePoint::SharedPtr checkSegment(wbb_msgs::msg::ImagePoint star
     return nullptr;
 }
 
-wbb_msgs::msg::ImagePoint::SharedPtr findLookahead(wbb_msgs::msg::ImagePath::SharedPtr trajectory,
+wbb_msgs::msg::ImagePoint::SharedPtr PurePursuit::findLookahead(wbb_msgs::msg::ImagePath::SharedPtr trajectory,
                                                    wbb_msgs::msg::ImagePose::SharedPtr bot_pose)
 {
     for (size_t i = 1; i < trajectory->points.size(); i++)
@@ -134,12 +134,12 @@ wbb_msgs::msg::ImagePoint::SharedPtr findLookahead(wbb_msgs::msg::ImagePath::Sha
     return nullptr;
 }
 
-void visualizeLookahead(wbb_msgs::msg::ImagePoint::SharedPtr lookahead)
+void PurePursuit::visualizeLookahead(wbb_msgs::msg::ImagePoint::SharedPtr lookahead)
 {
     visualization_msgs::msg::ImageMarker vis_msg;
     vis_msg.type = visualization_msgs::msg::ImageMarker::CIRCLE;
     vis_msg.ns = "";
-    msg.action = visualization_msgs::msg::ImageMarker::ADD;
+    vis_msg.action = visualization_msgs::msg::ImageMarker::ADD;
 
     std_msgs::msg::ColorRGBA color;
 
@@ -163,12 +163,12 @@ void visualizeLookahead(wbb_msgs::msg::ImagePoint::SharedPtr lookahead)
     signal_.visual->publish(vis_msg);
 }
 
-void visualizeRadius(double curvature, wbb_msgs::msg::ImagePose::SharedPtr bot_pose)
+void PurePursuit::visualizeRadius(double curvature, wbb_msgs::msg::ImagePose::SharedPtr bot_pose)
 {
     visualization_msgs::msg::ImageMarker vis_msg;
     vis_msg.type = visualization_msgs::msg::ImageMarker::CIRCLE;
     vis_msg.ns = "";
-    msg.action = visualization_msgs::msg::ImageMarker::ADD;
+    vis_msg.action = visualization_msgs::msg::ImageMarker::ADD;
 
     double radius = 1000;
     if (curvature != 0)
