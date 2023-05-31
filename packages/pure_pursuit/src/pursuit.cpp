@@ -88,7 +88,7 @@ wbb_msgs::msg::ImagePoint::SharedPtr checkSegment(wbb_msgs::msg::ImagePoint star
                           2 * (start.y - bot_pose->y) * (end.y - start.y);
 
     double vector_dot_c = std::pow(start.x - bot_pose->x, 2) +
-                          std::pow(start.y - bot_pose->y, 2) - std::pow(self.lookahead, 2);
+                          std::pow(start.y - bot_pose->y, 2) - std::pow(lookahead, 2);
 
     double discr = std::pow(vector_dot_b, 2) - 4 * vector_dot_a * vector_dot_c;
 
@@ -138,8 +138,8 @@ void PurePursuit::sendControlCommand()
     auto stop = [this]()
     {
         wbb_msgs::msg::Control msg;
-        msg->curvature = 0;
-        msg->velocity = 0;
+        msg.curvature = 0;
+        msg.velocity = 0;
         signal_.control->publish(msg);
     };
 
@@ -158,8 +158,8 @@ void PurePursuit::sendControlCommand()
     }
 
     wbb_msgs::msg::Control msg;
-    msg->curvature = calculateCurvature(lh, state_.bot_pose);
-    msg->velocity = 1.0;
+    msg.curvature = calculateCurvature(lh, state_.bot_pose);
+    msg.velocity = 1.0;
     signal_.control->publish(msg);
 }
 
