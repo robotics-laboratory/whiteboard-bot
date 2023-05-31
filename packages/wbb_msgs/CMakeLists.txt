@@ -20,10 +20,10 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   msg/SegmentationGrid.msg
   msg/Control.msg
   msg/Eraser.msg
+  srv/Erase.srv
   DEPENDENCIES
   builtin_interfaces
   geometry_msgs
-  srv/Erase.srv
   std_msgs
   ADD_LINTER_TESTS
 )
