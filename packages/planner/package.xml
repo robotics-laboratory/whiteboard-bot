@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>planner</name>
+  <version>0.0.0</version>
+  <description>Package for planner</description>
+  <maintainer email="gordey.skor@mail.ru">Skorobogatov Gordei</maintainer>
+  <license>MIT</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <depend>Boost</depend>
+  <depend>foxglove_msgs</depend>
+  <depend>OpenCV</depend>
+  <depend>rclcpp</depend>
+  <depend>detection</depend>
+  <depend>wbb_msgs</depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

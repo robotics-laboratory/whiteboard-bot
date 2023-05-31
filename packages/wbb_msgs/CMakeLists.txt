@@ -9,9 +9,11 @@ find_package(builtin_interfaces REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
+find_package(std_msgs REQUIRED)
 
 rosidl_generate_interfaces(${PROJECT_NAME} 
   msg/ImagePose.msg
+  msg/ImagePath.msg
   msg/ImagePoint.msg
   msg/ImageMarkerPos.msg
   msg/ImageMarkerPosArray.msg
@@ -21,6 +23,8 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   DEPENDENCIES
   builtin_interfaces
   geometry_msgs
+  srv/Erase.srv
+  std_msgs
   ADD_LINTER_TESTS
 )
 

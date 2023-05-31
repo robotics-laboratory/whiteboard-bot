@@ -12,7 +12,8 @@ namespace wbb {
 
 namespace {
 
-const int kBotMarkerId = 4;  // Values ​​from 0 to 3 are the serial numbers of markers on the corners of the board
+const int kBotMarkerId =
+    4;  // Values ​​from 0 to 3 are the serial numbers of markers on the corners of the board
 const float kBotMarkerSize = 0.1f;
 const float kBaseLength = 0.2f;
 const float kBaseWidth = 0.15f;
@@ -231,7 +232,8 @@ void CameraNode::publishPreviewCorners(
     for (auto marker : markers) {
         coords.push_back(marker.corners);
     }
-    const auto preview_corners_msg = msg::makeLineStripArray(kCornersMsgId, coords, captured_time);
+    const auto preview_corners_msg =
+        msg::makeLineStripArray(kCornersMsgId, coords, Color(1, 0, 0, 1), 2, captured_time);
     preview_corners_publisher_->publish(preview_corners_msg);
 }
 
@@ -239,9 +241,11 @@ void CameraNode::publishBotBox(
     const std::vector<cv::Point2f>& bot_box, const rclcpp::Time& captured_time) {
     visualization_msgs::msg::ImageMarker bot_box_msg;
     if (bot_box.size() == 0) {
-        bot_box_msg = msg::makeLineStrip(kBotMsgId, bot_box, captured_time, false, false);
+        bot_box_msg = msg::makeLineStrip(
+            kBotMsgId, bot_box, Color(1, 0, 0, 1), 2, captured_time, false, false);
     } else {
-        bot_box_msg = msg::makeLineStrip(kBotMsgId, bot_box, captured_time);
+        bot_box_msg =
+            msg::makeLineStrip(kBotMsgId, bot_box, Color(1, 0, 0, 1), 2, captured_time, true, true);
     }
 
     preview_border_publisher_->publish(bot_box_msg);

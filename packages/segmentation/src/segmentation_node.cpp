@@ -12,7 +12,7 @@
 #include <stdio.h>
 
 namespace {
-int get_index(int x, int y, int width) { return y * width + x; }
+int getIndex(int x, int y, int width) { return y * width + x; }
 }  // namespace
 
 namespace wbb {
@@ -142,7 +142,7 @@ SegmentationGrid SegmentationNode::segment(const cv::Mat& threshold_image) {
         for (int j = 0; j < delta_; ++j) {
             for (const auto& corner : corner_segments_coords) {
                 segmentation
-                    .data[get_index(corner.first + j, corner.second + i, segmentation.width)] = 0;
+                    .data[getIndex(corner.first + j, corner.second + i, segmentation.width)] = 0;
             }
         }
     }
@@ -158,7 +158,7 @@ std::vector<std::vector<std::pair<int, int>>> SegmentationNode::getPreviewMarker
 
     for (int i = 0; i < segmentation.height; ++i) {
         for (int j = 0; j < segmentation.width; ++j) {
-            if (!segmentation.data[get_index(j, i, segmentation.width)]) {
+            if (!segmentation.data[getIndex(j, i, segmentation.width)]) {
                 continue;
             }
 
