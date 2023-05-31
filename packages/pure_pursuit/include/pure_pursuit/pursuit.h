@@ -29,11 +29,11 @@ class PurePursuit : public rclcpp::Node
     double calculateCurvature(wbb_msgs::msg::ImagePoint::SharedPtr lookahead,
                               wbb_msgs::msg::ImagePose::SharedPtr bot_pose);
 
-    wbb_msgs::msg::ImagePoint::SharedPtr findClosest(wbb_msgs::msg::ImagePath::SharedPtr trajectory,
-                                                     wbb_msgs::msg::ImagePose::SharedPtr bot_pose);
+//    wbb_msgs::msg::ImagePoint findClosest(wbb_msgs::msg::ImagePath::SharedPtr trajectory,
+//                                                     wbb_msgs::msg::ImagePose::SharedPtr bot_pose);
 
-    wbb_msgs::msg::ImagePoint::SharedPtr checkSegment(wbb_msgs::msg::ImagePoint::SharedPtr start,
-                                                      wbb_msgs::msg::ImagePoint::SharedPtr end,
+    wbb_msgs::msg::ImagePoint::SharedPtr checkSegment(wbb_msgs::msg::ImagePoint start,
+                                                      wbb_msgs::msg::ImagePoint end,
                                                       wbb_msgs::msg::ImagePose::SharedPtr bot_pose);
 
     wbb_msgs::msg::ImagePoint::SharedPtr findLookahead(wbb_msgs::msg::ImagePath::SharedPtr trajectory,
