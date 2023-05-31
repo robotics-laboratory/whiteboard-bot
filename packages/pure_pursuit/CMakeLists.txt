@@ -7,6 +7,7 @@ add_compile_options(-Wall -Wextra -Wpedantic)
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(wbb_msgs REQUIRED)
+find_package(visualization_msgs REQUIRED)
 # uncomment the following section in order to fill in
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)
@@ -22,6 +23,7 @@ target_compile_features(pursuit PUBLIC c_std_99 cxx_std_17)  # Require C99 and C
 ament_target_dependencies(
     pursuit
     rclcpp
+    visualization_msgs
     wbb_msgs )
 
 

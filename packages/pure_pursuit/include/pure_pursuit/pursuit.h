@@ -8,6 +8,7 @@
 #include <wbb_msgs/msg/image_pose.hpp>
 #include <wbb_msgs/msg/control.hpp>
 #include <rclcpp/rclcpp.hpp>
+#include <visualization_msgs/msg/image_marker.hpp>
 
 namespace wbb
 {
@@ -39,6 +40,10 @@ class PurePursuit : public rclcpp::Node
     wbb_msgs::msg::ImagePoint::SharedPtr findLookahead(wbb_msgs::msg::ImagePath::SharedPtr trajectory,
                                                        wbb_msgs::msg::ImagePose::SharedPtr bot_pose);
 
+    void visualizeLookahead(wbb_msgs::msg::ImagePoint::SharedPtr lookahead);
+
+    void visualizeRadius(double curvature, wbb_msgs::msg::ImagePose::SharedPtr bot_pose);
+
     void sendControlCommand();
 
     struct Slols
@@ -49,6 +54,7 @@ class PurePursuit : public rclcpp::Node
     struct Signals
     {
         rclcpp::Publisher<wbb_msgs::msg::Control>::SharedPtr control = nullptr;
+        rclcpp::Publisher<visualization_msgs::msg::ImageMarker>::SharedPtr visual = nullptr;
     } signal_;
 
     struct State
@@ -58,6 +64,7 @@ class PurePursuit : public rclcpp::Node
     } state_;
 
     std::chrono::duration<double> timeout_{0.20};
+    double lookahead_distance;
     rclcpp::TimerBase::SharedPtr timer_ = nullptr;
 };
 

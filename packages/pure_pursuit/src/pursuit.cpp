@@ -10,7 +10,7 @@ PurePursuit::PurePursuit() : Node("pure_pursuit")
 
     std::chrono::duration<double> period = std::chrono::duration<double>(
         this->declare_parameter<double>("period", 0.02));
-    double lookahead = this->declare_parameter<double>("lookahead", 0.1);
+    lookahead_distance = this->declare_parameter<double>("lookahead", 0.1);
 
     timer_ = this->create_wall_timer(period, std::bind(&PurePursuit::sendControlCommand, this));
 
@@ -24,6 +24,7 @@ PurePursuit::PurePursuit() : Node("pure_pursuit")
         );
 
     signal_.control = this->create_publisher<wbb_msgs::msg::Control>("/movement", 1);
+    signal_.visual = this->create_publisher<visualization_msgs::msg::ImageMarker>("/board/preview/pursuit", 10);
 }
 
 void PurePursuit::handleTrajectory(wbb_msgs::msg::ImagePath::SharedPtr trajectory)
@@ -88,7 +89,7 @@ wbb_msgs::msg::ImagePoint::SharedPtr checkSegment(wbb_msgs::msg::ImagePoint star
                           2 * (start.y - bot_pose->y) * (end.y - start.y);
 
     double vector_dot_c = std::pow(start.x - bot_pose->x, 2) +
-                          std::pow(start.y - bot_pose->y, 2) - std::pow(lookahead, 2);
+                          std::pow(start.y - bot_pose->y, 2) - std::pow(lookahead_distance, 2);
 
     double discr = std::pow(vector_dot_b, 2) - 4 * vector_dot_a * vector_dot_c;
 
@@ -133,6 +134,78 @@ wbb_msgs::msg::ImagePoint::SharedPtr findLookahead(wbb_msgs::msg::ImagePath::Sha
     return nullptr;
 }
 
+void visualizeLookahead(wbb_msgs::msg::ImagePoint::SharedPtr lookahead)
+{
+    visualization_msgs::msg::ImageMarker vis_msg;
+    vis_msg.type = visualization_msgs::msg::ImageMarker::CIRCLE;
+    vis_msg.ns = "";
+    msg.action = visualization_msgs::msg::ImageMarker::ADD;
+
+    std_msgs::msg::ColorRGBA color;
+
+    color.r = 1.0;
+    color.g = 1.0;
+    color.b = 1.0;
+    color.a = 0.4;
+
+    vis_msg.outline_color = color;
+    vis_msg.fill_color = color;
+    vis_msg.filled = 1;
+    vis_msg.scale = 1.0;
+
+    geometry_msgs::msg::Point pt;
+    pt.x = lookahead->x;
+    pt.y = lookahead->y;
+
+    vis_msg.position = pt;
+    vis_msg.lifetime = timeout_;
+
+    signal_.visual->publish(vis_msg);
+}
+
+void visualizeRadius(double curvature, wbb_msgs::msg::ImagePose::SharedPtr bot_pose)
+{
+    visualization_msgs::msg::ImageMarker vis_msg;
+    vis_msg.type = visualization_msgs::msg::ImageMarker::CIRCLE;
+    vis_msg.ns = "";
+    msg.action = visualization_msgs::msg::ImageMarker::ADD;
+
+    double radius = 1000;
+    if (curvature != 0)
+        radius = 1 / curvature;
+
+    geometry_msgs::msg::Point pt;
+    if (radius >= 0)
+    {
+        double angle = bot_pose->theta + M_PI / 2;
+        pt.x = int(radius * std::cos(angle)) + bot_pose->x;
+        pt.y = int(radius * std::sin(angle)) + bot_pose->y;
+    }
+    else
+    {
+        double angle = bot_pose->theta - M_PI / 2;
+        pt.x = bot_pose->x - int(-radius * std::cos(angle));
+        pt.y = bot_pose->y - int(-radius * std::sin(angle));
+    }
+
+    vis_msg.position = pt;
+
+    std_msgs::msg::ColorRGBA color;
+
+    color.r = 0.0;
+    color.g = 1.0;
+    color.b = 0.0;
+    color.a = 0.4;
+
+    vis_msg.outline_color = color;
+    vis_msg.filled = 0;
+    vis_msg.scale = int(radius);
+
+    vis_msg.lifetime = timeout_;
+
+    signal_.visual->publish(vis_msg);
+}
+
 void PurePursuit::sendControlCommand()
 {
     auto stop = [this]()
@@ -157,8 +230,11 @@ void PurePursuit::sendControlCommand()
         return;
     }
 
+    visualizeLookahead(lh);
+
     wbb_msgs::msg::Control msg;
     msg.curvature = calculateCurvature(lh, state_.bot_pose);
+    visualizeRadius(msg.curvature, state_.bot_pose);
     msg.velocity = 1.0;
     signal_.control->publish(msg);
 }
