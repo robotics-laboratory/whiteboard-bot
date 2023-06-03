@@ -1,12 +1,13 @@
 #include "camera/camera_node.h"
-#include "detection/detection.h"
 
-#include <std_msgs/msg/header.hpp>
+#include <stdio.h>
 
 #include <chrono>
 #include <cmath>
 #include <optional>
-#include <stdio.h>
+#include <std_msgs/msg/header.hpp>
+
+#include "detection/detection.h"
 
 namespace wbb {
 
@@ -15,6 +16,7 @@ namespace {
 const int kBotMarkerId =
     4;  // Values ​​from 0 to 3 are the serial numbers of markers on the corners of the board
 const float kBotMarkerSize = 0.1f;
+const float kCornerMarkerSize = 0.057f;
 const float kBaseLength = 0.2f;
 const float kBaseWidth = 0.15f;
 const int kCornersMsgId = 0;
@@ -56,6 +58,9 @@ CameraNode::CameraNode() : Node("CameraNode") {
 
     robot_border_publisher_ =
         this->create_publisher<wbb_msgs::msg::ImageMarkerPos>("/board/image/ego", 10);
+
+    pixel_scale_publisher_ =
+        this->create_publisher<wbb_msgs::msg::ImagePixelScale>("/board/scale", 10);
 
     preview_corners_publisher_ =
         this->create_publisher<foxglove_msgs::msg::ImageMarkerArray>("/board/preview/corners", 10);
@@ -219,6 +224,22 @@ void CameraNode::publishImageCorners(const std::vector<Marker>& markers) {
     image_corners_publisher_->publish(image_corners_msg);
 }
 
+void CameraNode::publishPixelScale(const std::vector<Marker>& markers) {
+    wbb_msgs::msg::ImagePixelScale msg;
+    if (markers.empty()) {
+        msg.scale_x = 1;
+        msg.scale_y = 1;
+    } else {
+        int pixels_x = markers[0].corners[1].x - markers[0].corners[0].x;
+        int pixels_y = markers[0].corners[3].y - markers[0].corners[0].y;
+
+        msg.scale_x = kCornerMarkerSize / pixels_x;
+        msg.scale_y = kCornerMarkerSize / pixels_y;
+    }
+
+    pixel_scale_publisher_->publish(msg);
+}
+
 void CameraNode::publishPreview(const cv::Mat& warped_image, const rclcpp::Time& captured_time) {
     sensor_msgs::msg::CompressedImage compressed_msg;
     cv_bridge::CvImage(msg::makeHeader(captured_time), "bgr8", warped_image)
@@ -296,6 +317,7 @@ void CameraNode::handleCameraOnTimer() {
 
     publishImage(warped_image, captured_time);
     publishImageCorners(transformed_detection.corners);
+    publishPixelScale(transformed_detection.corners);
     publishImageBorder(bot_box);
     publishBotEgo(bot_pose, captured_time);
 
