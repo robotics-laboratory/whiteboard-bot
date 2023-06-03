@@ -19,7 +19,7 @@ PurePursuit::PurePursuit() : Node("pure_pursuit")
         );
 
     slot_.bot_pose = this->create_subscription<wbb_msgs::msg::ImagePose>(
-        "/board/image/ego", rclcpp::QoS(1).reliability(qos),
+        "/robot/ego", rclcpp::QoS(1).reliability(qos),
         std::bind(&PurePursuit::handleBotPose, this, _1)
         );
 
@@ -143,10 +143,10 @@ void PurePursuit::visualizeLookahead(wbb_msgs::msg::ImagePoint::SharedPtr lookah
 
     std_msgs::msg::ColorRGBA color;
 
-    color.r = 1.0;
-    color.g = 1.0;
+    color.r = 0.0;
+    color.g = 0.0;
     color.b = 1.0;
-    color.a = 0.4;
+    color.a = 1.0;
 
     vis_msg.outline_color = color;
     vis_msg.fill_color = color;
@@ -159,6 +159,25 @@ void PurePursuit::visualizeLookahead(wbb_msgs::msg::ImagePoint::SharedPtr lookah
 
     vis_msg.position = pt;
     //vis_msg.lifetime = timeout_;
+
+    signal_.visual->publish(vis_msg);
+}
+
+void PurePursuit::visualizeLARadius(wbb_msgs::msg::ImagePose::SharedPtr bot_pose)
+{
+    visualization_msgs::msg::ImageMarker vis_msg;
+    vis_msg.type = visualization_msgs::msg::ImageMarker::CIRCLE;
+    vis_msg.ns = "";
+    vis_msg.action = visualization_msgs::msg::ImageMarker::ADD;
+
+    vis_msg.outline_color = color;
+    vis_msg.filled = 0;
+    vis_msg.scale = int(lookahead_distance);
+
+    geometry_msgs::msg::Point pt;
+    pt.x = bot_pose->x;
+    pt.y = bot_pose->y;
+    vis_msg.position = pt;
 
     signal_.visual->publish(vis_msg);
 }
@@ -221,6 +240,8 @@ void PurePursuit::sendControlCommand()
         stop();
         return;
     }
+
+    visualizeLARadius(state_.bot_pose);
 
     wbb_msgs::msg::ImagePoint::SharedPtr lh = findLookahead(state_.trajectory, state_.bot_pose);
 
