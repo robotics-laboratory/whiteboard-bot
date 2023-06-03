@@ -44,6 +44,8 @@ class PurePursuit : public rclcpp::Node
 
     void visualizeRadius(double curvature, wbb_msgs::msg::ImagePose::SharedPtr bot_pose);
 
+    void visualizeLARadius(wbb_msgs::msg::ImagePose::SharedPtr bot_pose);
+
     void sendControlCommand();
 
     struct Slols
