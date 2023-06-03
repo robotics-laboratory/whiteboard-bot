@@ -170,6 +170,13 @@ void PurePursuit::visualizeLARadius(wbb_msgs::msg::ImagePose::SharedPtr bot_pose
     vis_msg.ns = "";
     vis_msg.action = visualization_msgs::msg::ImageMarker::ADD;
 
+    std_msgs::msg::ColorRGBA color;
+
+    color.r = 0.0;
+    color.g = 0.8;
+    color.b = 0.2;
+    color.a = 0.4;
+
     vis_msg.outline_color = color;
     vis_msg.filled = 0;
     vis_msg.scale = int(lookahead_distance);
