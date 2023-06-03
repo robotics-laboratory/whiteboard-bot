@@ -10,7 +10,7 @@ PurePursuit::PurePursuit() : Node("pure_pursuit")
 
     std::chrono::duration<double> period = std::chrono::duration<double>(
         this->declare_parameter<double>("period", 0.02));
-    lookahead_distance = this->declare_parameter<double>("lookahead", 0.1);
+    lookahead_distance = this->declare_parameter<double>("lookahead", 30);
 
     timer_ = this->create_wall_timer(period, std::bind(&PurePursuit::sendControlCommand, this));
 
@@ -24,7 +24,7 @@ PurePursuit::PurePursuit() : Node("pure_pursuit")
         );
 
     signal_.control = this->create_publisher<wbb_msgs::msg::Control>("/movement", 1);
-    signal_.visual = this->create_publisher<visualization_msgs::msg::ImageMarker>("/board/preview/pursuit", 10);
+    signal_.visual = this->create_publisher<visualization_msgs::msg::ImageMarker>("/robot/control/marker", 10);
 }
 
 void PurePursuit::handleTrajectory(wbb_msgs::msg::ImagePath::SharedPtr trajectory)
@@ -138,7 +138,7 @@ void PurePursuit::visualizeLookahead(wbb_msgs::msg::ImagePoint::SharedPtr lookah
 {
     visualization_msgs::msg::ImageMarker vis_msg;
     vis_msg.type = visualization_msgs::msg::ImageMarker::CIRCLE;
-    vis_msg.ns = "";
+    vis_msg.ns = "0";
     vis_msg.action = visualization_msgs::msg::ImageMarker::ADD;
 
     std_msgs::msg::ColorRGBA color;
@@ -167,15 +167,15 @@ void PurePursuit::visualizeLARadius(wbb_msgs::msg::ImagePose::SharedPtr bot_pose
 {
     visualization_msgs::msg::ImageMarker vis_msg;
     vis_msg.type = visualization_msgs::msg::ImageMarker::CIRCLE;
-    vis_msg.ns = "";
+    vis_msg.ns = "1";
     vis_msg.action = visualization_msgs::msg::ImageMarker::ADD;
 
     std_msgs::msg::ColorRGBA color;
 
     color.r = 0.0;
-    color.g = 0.8;
-    color.b = 0.2;
-    color.a = 0.4;
+    color.g = 0.5;
+    color.b = 0.5;
+    color.a = 1.0;
 
     vis_msg.outline_color = color;
     vis_msg.filled = 0;
@@ -193,7 +193,7 @@ void PurePursuit::visualizeRadius(double curvature, wbb_msgs::msg::ImagePose::Sh
 {
     visualization_msgs::msg::ImageMarker vis_msg;
     vis_msg.type = visualization_msgs::msg::ImageMarker::CIRCLE;
-    vis_msg.ns = "";
+    vis_msg.ns = "2";
     vis_msg.action = visualization_msgs::msg::ImageMarker::ADD;
 
     double radius = 1000;
@@ -221,7 +221,7 @@ void PurePursuit::visualizeRadius(double curvature, wbb_msgs::msg::ImagePose::Sh
     color.r = 0.0;
     color.g = 1.0;
     color.b = 0.0;
-    color.a = 0.4;
+    color.a = 1.0;
 
     vis_msg.outline_color = color;
     vis_msg.filled = 0;
