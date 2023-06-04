@@ -24,11 +24,13 @@ class PurePursuit : public rclcpp::Node
 
     void handleBotPose(wbb_msgs::msg::ImagePose::SharedPtr bot_pose);
 
+    void handlePixelScale(wbb_msgs::msg::ImagePixelScale::SharedPtr scale);
+
     double calculateDistance(wbb_msgs::msg::ImagePoint::SharedPtr first,
                              wbb_msgs::msg::ImagePose::SharedPtr second);
 
     double calculateCurvature(wbb_msgs::msg::ImagePoint::SharedPtr lookahead,
-                              wbb_msgs::msg::ImagePose::SharedPtr bot_pose);
+                              wbb_msgs::msg::ImagePose::SharedPtr bot_pose, double scale);
 
 //    wbb_msgs::msg::ImagePoint findClosest(wbb_msgs::msg::ImagePath::SharedPtr trajectory,
 //                                                     wbb_msgs::msg::ImagePose::SharedPtr bot_pose);
@@ -40,11 +42,11 @@ class PurePursuit : public rclcpp::Node
     wbb_msgs::msg::ImagePoint::SharedPtr findLookahead(wbb_msgs::msg::ImagePath::SharedPtr trajectory,
                                                        wbb_msgs::msg::ImagePose::SharedPtr bot_pose);
 
-    void visualizeLookahead(wbb_msgs::msg::ImagePoint::SharedPtr lookahead);
+    void visualizeLookahead(wbb_msgs::msg::ImagePoint::SharedPtr lookahead, double scale);
 
-    void visualizeRadius(double curvature, wbb_msgs::msg::ImagePose::SharedPtr bot_pose);
+    void visualizeRadius(double curvature, wbb_msgs::msg::ImagePose::SharedPtr bot_pose, double scale);
 
-    void visualizeLARadius(wbb_msgs::msg::ImagePose::SharedPtr bot_pose);
+    void visualizeLARadius(wbb_msgs::msg::ImagePose::SharedPtr bot_pose, double scale);
 
     void sendControlCommand();
 
@@ -52,6 +54,7 @@ class PurePursuit : public rclcpp::Node
     {
         rclcpp::Subscription<wbb_msgs::msg::ImagePath>::SharedPtr trajectory = nullptr;
         rclcpp::Subscription<wbb_msgs::msg::ImagePose>::SharedPtr bot_pose = nullptr;
+        rclcpp::Subscription<wbb_msgs::msg::ImagePixelScale>::SharedPtr scale = nullptr;
     } slot_;
     struct Signals
     {
@@ -63,6 +66,7 @@ class PurePursuit : public rclcpp::Node
     {
         wbb_msgs::msg::ImagePath::SharedPtr trajectory = nullptr;
         wbb_msgs::msg::ImagePose::SharedPtr bot_pose = nullptr;
+        wbb_msgs::msg::ImagePixelScale::SharedPtr scale = nullptr;
     } state_;
 
     std::chrono::duration<double> timeout_{0.20};

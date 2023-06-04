@@ -23,6 +23,10 @@ PurePursuit::PurePursuit() : Node("pure_pursuit")
         std::bind(&PurePursuit::handleBotPose, this, _1)
         );
 
+    slot_.scale = this->create_subscription<wbb_msgs::msg::ImagePixelScale>(
+        "/board/scale", 10, std::bind(&PurePursuit::handlePixelScale, this, _1)
+        );
+
     signal_.control = this->create_publisher<wbb_msgs::msg::Control>("/movement", 1);
     signal_.visual = this->create_publisher<visualization_msgs::msg::ImageMarker>("/robot/control/marker", 10);
 }
@@ -37,6 +41,11 @@ void PurePursuit::handleBotPose(wbb_msgs::msg::ImagePose::SharedPtr bot_pose)
     state_.bot_pose = std::move(bot_pose);
 }
 
+void PurePursuit::handlePixelScale(wbb_msgs::msg::ImagePixelScale::SharedPtr scale)
+{
+    state_.scale = std::move(scale);
+}
+
 double PurePursuit::calculateDistance(wbb_msgs::msg::ImagePoint::SharedPtr first,
                          wbb_msgs::msg::ImagePose::SharedPtr second)
 {
@@ -45,15 +54,17 @@ double PurePursuit::calculateDistance(wbb_msgs::msg::ImagePoint::SharedPtr first
 }
 
 double PurePursuit::calculateCurvature(wbb_msgs::msg::ImagePoint::SharedPtr lookahead,
-                                       wbb_msgs::msg::ImagePose::SharedPtr bot_pose)
+                                       wbb_msgs::msg::ImagePose::SharedPtr bot_pose, double scale)
 {
     double chord = calculateDistance(lookahead, bot_pose);
 
-    if (chord == 0)
+    if (chord == 0 || scale == 0)
         return 0;
 
     double alpha = std::atan2(lookahead->y - bot_pose->y, lookahead->x - bot_pose->x) -
                    M_PI / 2 + bot_pose->theta;
+
+    chord *= scale;
 
     if (std::cos(alpha) > 0)
         return (2 * std::abs(std::sin(alpha))) / chord;
@@ -134,7 +145,7 @@ wbb_msgs::msg::ImagePoint::SharedPtr PurePursuit::findLookahead(wbb_msgs::msg::I
     return nullptr;
 }
 
-void PurePursuit::visualizeLookahead(wbb_msgs::msg::ImagePoint::SharedPtr lookahead)
+void PurePursuit::visualizeLookahead(wbb_msgs::msg::ImagePoint::SharedPtr lookahead, double scale)
 {
     visualization_msgs::msg::ImageMarker vis_msg;
     vis_msg.type = visualization_msgs::msg::ImageMarker::CIRCLE;
@@ -151,11 +162,11 @@ void PurePursuit::visualizeLookahead(wbb_msgs::msg::ImagePoint::SharedPtr lookah
     vis_msg.outline_color = color;
     vis_msg.fill_color = color;
     vis_msg.filled = 1;
-    vis_msg.scale = 1.0;
+    vis_msg.scale = 0.1 * scale;
 
     geometry_msgs::msg::Point pt;
-    pt.x = lookahead->x;
-    pt.y = lookahead->y;
+    pt.x = lookahead->x * scale;
+    pt.y = lookahead->y * scale;
 
     vis_msg.position = pt;
     //vis_msg.lifetime = timeout_;
@@ -163,7 +174,7 @@ void PurePursuit::visualizeLookahead(wbb_msgs::msg::ImagePoint::SharedPtr lookah
     signal_.visual->publish(vis_msg);
 }
 
-void PurePursuit::visualizeLARadius(wbb_msgs::msg::ImagePose::SharedPtr bot_pose)
+void PurePursuit::visualizeLARadius(wbb_msgs::msg::ImagePose::SharedPtr bot_pose, double scale)
 {
     visualization_msgs::msg::ImageMarker vis_msg;
     vis_msg.type = visualization_msgs::msg::ImageMarker::CIRCLE;
@@ -179,26 +190,26 @@ void PurePursuit::visualizeLARadius(wbb_msgs::msg::ImagePose::SharedPtr bot_pose
 
     vis_msg.outline_color = color;
     vis_msg.filled = 0;
-    vis_msg.scale = int(lookahead_distance);
+    vis_msg.scale = int(lookahead_distance * scale);
 
     geometry_msgs::msg::Point pt;
-    pt.x = bot_pose->x;
-    pt.y = bot_pose->y;
+    pt.x = bot_pose->x * scale;
+    pt.y = bot_pose->y * scale;
     vis_msg.position = pt;
 
     signal_.visual->publish(vis_msg);
 }
 
-void PurePursuit::visualizeRadius(double curvature, wbb_msgs::msg::ImagePose::SharedPtr bot_pose)
+void PurePursuit::visualizeRadius(double curvature, wbb_msgs::msg::ImagePose::SharedPtr bot_pose, double scale)
 {
     visualization_msgs::msg::ImageMarker vis_msg;
     vis_msg.type = visualization_msgs::msg::ImageMarker::CIRCLE;
     vis_msg.ns = "2";
     vis_msg.action = visualization_msgs::msg::ImageMarker::ADD;
 
-    double radius = 1000;
-    if (curvature != 0)
-        radius = 1 / curvature;
+    double radius = 100 * scale;
+    if (curvature != 0 && scale != 0)
+        radius = 1 / (curvature * scale);
 
     geometry_msgs::msg::Point pt;
     if (radius >= 0)
@@ -213,6 +224,9 @@ void PurePursuit::visualizeRadius(double curvature, wbb_msgs::msg::ImagePose::Sh
         pt.x = bot_pose->x - int(-radius * std::cos(angle));
         pt.y = bot_pose->y - int(-radius * std::sin(angle));
     }
+
+    pt.x *= scale;
+    pt.y *= scale;
 
     vis_msg.position = pt;
 
@@ -242,15 +256,21 @@ void PurePursuit::sendControlCommand()
         signal_.control->publish(msg);
     };
 
-    if (!(state_.trajectory && state_.bot_pose))
+    if (!(state_.trajectory && state_.bot_pose && state_.scale))
     {
         stop();
         return;
     }
 
-    visualizeLARadius(state_.bot_pose);
+    wbb_msgs::msg::ImagePose bot_pose_src;
+    wbb_msgs::msg::ImagePose::SharedPtr bot_pose = std::make_shared<wbb_msgs::msg::ImagePose>(bot_pose_src);
 
-    wbb_msgs::msg::ImagePoint::SharedPtr lh = findLookahead(state_.trajectory, state_.bot_pose);
+    double scale = std::pow(std::cos(bot_pose->theta), 2) * state_.scale->x +
+                   std::pow(std::sin(bot_pose->theta), 2) * state_.scale->y;
+
+    visualizeLARadius(bot_pose, scale);
+
+    wbb_msgs::msg::ImagePoint::SharedPtr lh = findLookahead(state_.trajectory, bot_pose);
 
     if (!lh)
     {
@@ -258,11 +278,11 @@ void PurePursuit::sendControlCommand()
         return;
     }
 
-    visualizeLookahead(lh);
+    visualizeLookahead(lh, scale);
 
     wbb_msgs::msg::Control msg;
-    msg.curvature = calculateCurvature(lh, state_.bot_pose);
-    visualizeRadius(msg.curvature, state_.bot_pose);
+    msg.curvature = calculateCurvature(lh, bot_pose, scale);
+    visualizeRadius(msg.curvature, bot_pose, scale);
     msg.velocity = 1.0;
     signal_.control->publish(msg);
 }
