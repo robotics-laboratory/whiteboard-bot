@@ -1,20 +1,21 @@
 #pragma once
 
-#include "detection/detection.h"
-#include "camera/params.h"
-#include <wbb_msgs/msg/image_pose.hpp>
-#include <wbb_msgs/msg/image_marker_pos.hpp>
-#include <wbb_msgs/msg/image_marker_pos_array.hpp>
-
 #include <cv_bridge/cv_bridge.h>
+
 #include <foxglove_msgs/msg/image_marker_array.hpp>
+#include <memory>
 #include <opencv2/aruco.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/compressed_image.hpp>
 #include <sensor_msgs/msg/image.hpp>
 #include <visualization_msgs/msg/image_marker.hpp>
+#include <wbb_msgs/msg/image_marker_pos.hpp>
+#include <wbb_msgs/msg/image_marker_pos_array.hpp>
+#include <wbb_msgs/msg/image_pixel_scale.hpp>
+#include <wbb_msgs/msg/image_pose.hpp>
 
-#include <memory>
+#include "camera/params.h"
+#include "detection/detection.h"
 
 namespace wbb {
 
@@ -37,6 +38,7 @@ class CameraNode : public rclcpp::Node {
     void publishImageCorners(const std::vector<Marker>& markers);
     void publishImageBorder(const std::vector<cv::Point2f>& border);
     void publishBotEgo(const std::optional<BotPose>& ego, const rclcpp::Time& capturing_time);
+    void publishPixelScale(const std::vector<Marker>& markers);
 
     void publishPreview(const cv::Mat& warped_image, const rclcpp::Time& capturing_time);
     void publishPreviewCorners(
@@ -46,6 +48,7 @@ class CameraNode : public rclcpp::Node {
     rclcpp::TimerBase::SharedPtr timer_;
     rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr image_publisher_ = nullptr;
     rclcpp::Publisher<sensor_msgs::msg::CompressedImage>::SharedPtr preview_publisher_ = nullptr;
+    rclcpp::Publisher<wbb_msgs::msg::ImagePixelScale>::SharedPtr pixel_scale_publisher_ = nullptr;
 
     rclcpp::Publisher<wbb_msgs::msg::ImagePose>::SharedPtr robot_ego_publisher_ = nullptr;
     rclcpp::Publisher<wbb_msgs::msg::ImageMarkerPosArray>::SharedPtr image_corners_publisher_ =
