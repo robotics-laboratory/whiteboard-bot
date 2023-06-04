@@ -7,6 +7,7 @@
 #include <wbb_msgs/msg/image_path.hpp>
 #include <wbb_msgs/msg/image_pose.hpp>
 #include <wbb_msgs/msg/control.hpp>
+#include <wbb_msgs/msg/image_pixel_scale.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <visualization_msgs/msg/image_marker.hpp>
 
