@@ -265,8 +265,8 @@ void PurePursuit::sendControlCommand()
     wbb_msgs::msg::ImagePose bot_pose_src;
     wbb_msgs::msg::ImagePose::SharedPtr bot_pose = std::make_shared<wbb_msgs::msg::ImagePose>(bot_pose_src);
 
-    double scale = std::pow(std::cos(bot_pose->theta), 2) * state_.scale->x +
-                   std::pow(std::sin(bot_pose->theta), 2) * state_.scale->y;
+    double scale = std::pow(std::cos(bot_pose->theta), 2) * state_.scale->scale_x +
+                   std::pow(std::sin(bot_pose->theta), 2) * state_.scale->scale_y;
 
     visualizeLARadius(bot_pose, scale);
 
