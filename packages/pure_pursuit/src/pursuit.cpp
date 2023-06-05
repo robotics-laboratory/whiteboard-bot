@@ -24,7 +24,7 @@ PurePursuit::PurePursuit() : Node("pure_pursuit")
         );
 
     slot_.scale = this->create_subscription<wbb_msgs::msg::ImagePixelScale>(
-        "/board/scale", 10, std::bind(&PurePursuit::handlePixelScale, this, _1)
+        "/board/scale", 1, std::bind(&PurePursuit::handlePixelScale, this, _1)
         );
 
     signal_.control = this->create_publisher<wbb_msgs::msg::Control>("/movement", 1);
@@ -64,7 +64,7 @@ double PurePursuit::calculateCurvature(wbb_msgs::msg::ImagePoint::SharedPtr look
     double alpha = std::atan2(lookahead->y - bot_pose->y, lookahead->x - bot_pose->x) -
                    M_PI / 2 + bot_pose->theta;
 
-    chord *= scale;
+    chord /= scale;
 
     if (std::cos(alpha) > 0)
         return (2 * std::abs(std::sin(alpha))) / chord;
@@ -190,11 +190,11 @@ void PurePursuit::visualizeLARadius(wbb_msgs::msg::ImagePose::SharedPtr bot_pose
 
     vis_msg.outline_color = color;
     vis_msg.filled = 0;
-    vis_msg.scale = int(lookahead_distance * scale);
+    vis_msg.scale = int(lookahead_distance / scale);
 
     geometry_msgs::msg::Point pt;
-    pt.x = bot_pose->x * scale;
-    pt.y = bot_pose->y * scale;
+    pt.x = bot_pose->x;
+    pt.y = bot_pose->y;
     vis_msg.position = pt;
 
     signal_.visual->publish(vis_msg);
@@ -207,7 +207,7 @@ void PurePursuit::visualizeRadius(double curvature, wbb_msgs::msg::ImagePose::Sh
     vis_msg.ns = "2";
     vis_msg.action = visualization_msgs::msg::ImageMarker::ADD;
 
-    double radius = 100 * scale;
+    double radius = 100 / scale;
     if (curvature != 0 && scale != 0)
         radius = 1 / (curvature * scale);
 
@@ -224,9 +224,6 @@ void PurePursuit::visualizeRadius(double curvature, wbb_msgs::msg::ImagePose::Sh
         pt.x = bot_pose->x - int(-radius * std::cos(angle));
         pt.y = bot_pose->y - int(-radius * std::sin(angle));
     }
-
-    pt.x *= scale;
-    pt.y *= scale;
 
     vis_msg.position = pt;
 
