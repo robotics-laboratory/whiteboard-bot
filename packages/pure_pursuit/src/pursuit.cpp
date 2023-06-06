@@ -11,6 +11,7 @@ PurePursuit::PurePursuit() : Node("pure_pursuit")
     std::chrono::duration<double> period = std::chrono::duration<double>(
         this->declare_parameter<double>("period", 0.02));
     lookahead_distance = this->declare_parameter<double>("lookahead", 30);
+    trajectory_pos = 0;
 
     timer_ = this->create_wall_timer(period, std::bind(&PurePursuit::sendControlCommand, this));
 
@@ -33,7 +34,11 @@ PurePursuit::PurePursuit() : Node("pure_pursuit")
 
 void PurePursuit::handleTrajectory(wbb_msgs::msg::ImagePath::SharedPtr trajectory)
 {
-    state_.trajectory = std::move(trajectory);
+    if (trajectory != state_.trajectory)
+    {
+        state_.trajectory = std::move(trajectory);
+        trajectory_pos = 0;
+    }
 }
 
 void PurePursuit::handleBotPose(wbb_msgs::msg::ImagePose::SharedPtr bot_pose)
@@ -133,12 +138,16 @@ wbb_msgs::msg::ImagePoint::SharedPtr PurePursuit::checkSegment(wbb_msgs::msg::Im
 wbb_msgs::msg::ImagePoint::SharedPtr PurePursuit::findLookahead(wbb_msgs::msg::ImagePath::SharedPtr trajectory,
                                                    wbb_msgs::msg::ImagePose::SharedPtr bot_pose)
 {
-    for (size_t i = 1; i < trajectory->points.size(); i++)
+    for (size_t i = trajectory_pos + 1; i < trajectory->points.size(); i++)
     {
         wbb_msgs::msg::ImagePoint::SharedPtr pt = checkSegment(trajectory->points[i - 1], trajectory->points[i], bot_pose);
         if (!pt)
             continue;
 
+        if (state_.last_point && state_.last_point != pt)
+            trajectory_pos++;
+
+        state_.last_point = pt;
         return pt;
     }
 

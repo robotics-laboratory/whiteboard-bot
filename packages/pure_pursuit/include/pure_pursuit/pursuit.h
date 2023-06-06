@@ -68,10 +68,12 @@ class PurePursuit : public rclcpp::Node
         wbb_msgs::msg::ImagePath::SharedPtr trajectory = nullptr;
         wbb_msgs::msg::ImagePose::SharedPtr bot_pose = nullptr;
         wbb_msgs::msg::ImagePixelScale::SharedPtr scale = nullptr;
+        wbb_msgs::msg::ImagePoint::SharedPtr last_point = nullptr;
     } state_;
 
     std::chrono::duration<double> timeout_{0.20};
     double lookahead_distance;
+    size_t trajectory_pos;
     rclcpp::TimerBase::SharedPtr timer_ = nullptr;
 };
 
