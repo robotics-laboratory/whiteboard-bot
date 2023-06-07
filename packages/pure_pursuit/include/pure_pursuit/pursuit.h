@@ -38,10 +38,12 @@ class PurePursuit : public rclcpp::Node
 
     wbb_msgs::msg::ImagePoint::SharedPtr checkSegment(wbb_msgs::msg::ImagePoint start,
                                                       wbb_msgs::msg::ImagePoint end,
-                                                      wbb_msgs::msg::ImagePose::SharedPtr bot_pose);
+                                                      wbb_msgs::msg::ImagePose::SharedPtr bot_pose,
+                                                      double scale);
 
     wbb_msgs::msg::ImagePoint::SharedPtr findLookahead(wbb_msgs::msg::ImagePath::SharedPtr trajectory,
-                                                       wbb_msgs::msg::ImagePose::SharedPtr bot_pose);
+                                                       wbb_msgs::msg::ImagePose::SharedPtr bot_pose,
+                                                       double scale);
 
     void visualizeLookahead(wbb_msgs::msg::ImagePoint::SharedPtr lookahead, double scale);
 

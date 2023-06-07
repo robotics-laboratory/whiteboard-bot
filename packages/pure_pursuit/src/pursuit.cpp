@@ -10,7 +10,7 @@ PurePursuit::PurePursuit() : Node("pure_pursuit")
 
     std::chrono::duration<double> period = std::chrono::duration<double>(
         this->declare_parameter<double>("period", 0.02));
-    lookahead_distance = this->declare_parameter<double>("lookahead", 30);
+    lookahead_distance = this->declare_parameter<double>("lookahead", 0.2);
     trajectory_pos = 0;
 
     timer_ = this->create_wall_timer(period, std::bind(&PurePursuit::sendControlCommand, this));
@@ -96,8 +96,9 @@ double PurePursuit::calculateCurvature(wbb_msgs::msg::ImagePoint::SharedPtr look
 }*/
 
 wbb_msgs::msg::ImagePoint::SharedPtr PurePursuit::checkSegment(wbb_msgs::msg::ImagePoint start,
-                                                  wbb_msgs::msg::ImagePoint end,
-                                                  wbb_msgs::msg::ImagePose::SharedPtr bot_pose)
+                                                               wbb_msgs::msg::ImagePoint end,
+                                                               wbb_msgs::msg::ImagePose::SharedPtr bot_pose,
+                                                               double scale)
 {
     double vector_dot_a = std::pow(end.x - start.x, 2) + std::pow(end.y - start.y, 2);
 
@@ -105,7 +106,7 @@ wbb_msgs::msg::ImagePoint::SharedPtr PurePursuit::checkSegment(wbb_msgs::msg::Im
                           2 * (start.y - bot_pose->y) * (end.y - start.y);
 
     double vector_dot_c = std::pow(start.x - bot_pose->x, 2) +
-                          std::pow(start.y - bot_pose->y, 2) - std::pow(lookahead_distance, 2);
+                          std::pow(start.y - bot_pose->y, 2) - std::pow(lookahead_distance / scale, 2);
 
     double discr = std::pow(vector_dot_b, 2) - 4 * vector_dot_a * vector_dot_c;
 
@@ -136,11 +137,12 @@ wbb_msgs::msg::ImagePoint::SharedPtr PurePursuit::checkSegment(wbb_msgs::msg::Im
 }
 
 wbb_msgs::msg::ImagePoint::SharedPtr PurePursuit::findLookahead(wbb_msgs::msg::ImagePath::SharedPtr trajectory,
-                                                   wbb_msgs::msg::ImagePose::SharedPtr bot_pose)
+                                                   wbb_msgs::msg::ImagePose::SharedPtr bot_pose, double scale)
 {
     for (size_t i = trajectory_pos + 1; i < trajectory->points.size(); i++)
     {
-        wbb_msgs::msg::ImagePoint::SharedPtr pt = checkSegment(trajectory->points[i - 1], trajectory->points[i], bot_pose);
+        wbb_msgs::msg::ImagePoint::SharedPtr pt = checkSegment(trajectory->points[i - 1],trajectory->points[i],
+                                                               bot_pose, scale);
         if (!pt)
             continue;
 
@@ -268,7 +270,7 @@ void PurePursuit::sendControlCommand()
         return;
     }
 
-    wbb_msgs::msg::ImagePose bot_pose_src;
+    wbb_msgs::msg::ImagePose bot_pose_src = *state_.bot_pose;
     wbb_msgs::msg::ImagePose::SharedPtr bot_pose = std::make_shared<wbb_msgs::msg::ImagePose>(bot_pose_src);
 
     double scale = std::pow(std::cos(bot_pose->theta), 2) * state_.scale->scale_x +
@@ -276,7 +278,7 @@ void PurePursuit::sendControlCommand()
 
     visualizeLARadius(bot_pose, scale);
 
-    wbb_msgs::msg::ImagePoint::SharedPtr lh = findLookahead(state_.trajectory, bot_pose);
+    wbb_msgs::msg::ImagePoint::SharedPtr lh = findLookahead(state_.trajectory, bot_pose, scale);
 
     if (!lh)
     {
