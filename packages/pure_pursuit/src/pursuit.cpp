@@ -58,7 +58,7 @@ double PurePursuit::calculateDistance(wbb_msgs::msg::ImagePoint::SharedPtr first
                      std::pow(first->y - second->y, 2));
 }
 
-double PurePursuit::calculateCurvature(wbb_msgs::msg::ImagePoint::SharedPtr lookahead,
+std::pair<double, double> PurePursuit::calculateCurvature(wbb_msgs::msg::ImagePoint::SharedPtr lookahead,
                                        wbb_msgs::msg::ImagePose::SharedPtr bot_pose, double scale)
 {
     double chord = calculateDistance(lookahead, bot_pose);
@@ -70,10 +70,13 @@ double PurePursuit::calculateCurvature(wbb_msgs::msg::ImagePoint::SharedPtr look
                    M_PI / 2 + bot_pose->theta;
 
     chord /= scale;
+    double velocity = 0.5;
+    if (std::sin(alpha) < 0)
+        velocity *= -1;
 
-    if (std::cos(alpha) > 0)
-        return (2 * std::abs(std::sin(alpha))) / chord;
-    return -(2 * std::abs(std::sin(alpha))) / chord;
+    if (std::cos(alpha) >= 0)
+        return {(2 * std::abs(std::sin(alpha))) / chord, velocity};
+    return {-(2 * std::abs(std::sin(alpha))) / chord, velocity};
 }
 
 /*wbb_msgs::msg::ImagePoint findClosest(wbb_msgs::msg::ImagePath::SharedPtr trajectory,
@@ -276,7 +279,7 @@ void PurePursuit::sendControlCommand()
     double scale = std::pow(std::cos(bot_pose->theta), 2) * state_.scale->scale_x +
                    std::pow(std::sin(bot_pose->theta), 2) * state_.scale->scale_y;
 
-    visualizeLARadius(bot_pose, scale);
+    //visualizeLARadius(bot_pose, scale);
 
     wbb_msgs::msg::ImagePoint::SharedPtr lh = findLookahead(state_.trajectory, bot_pose, scale);
 
@@ -289,9 +292,10 @@ void PurePursuit::sendControlCommand()
     visualizeLookahead(lh, scale);
 
     wbb_msgs::msg::Control msg;
-    msg.curvature = calculateCurvature(lh, bot_pose, scale);
+    std::pair<double, double> prop = calculateCurvature(lh, bot_pose, scale);
+    msg.curvature = prop.first;
     visualizeRadius(msg.curvature, bot_pose, scale);
-    msg.velocity = 1.0;
+    msg.velocity = prop.second;
     signal_.control->publish(msg);
 }
 

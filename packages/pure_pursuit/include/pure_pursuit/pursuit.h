@@ -30,7 +30,7 @@ class PurePursuit : public rclcpp::Node
     double calculateDistance(wbb_msgs::msg::ImagePoint::SharedPtr first,
                              wbb_msgs::msg::ImagePose::SharedPtr second);
 
-    double calculateCurvature(wbb_msgs::msg::ImagePoint::SharedPtr lookahead,
+    std::pair<double, double> calculateCurvature(wbb_msgs::msg::ImagePoint::SharedPtr lookahead,
                               wbb_msgs::msg::ImagePose::SharedPtr bot_pose, double scale);
 
 //    wbb_msgs::msg::ImagePoint findClosest(wbb_msgs::msg::ImagePath::SharedPtr trajectory,
