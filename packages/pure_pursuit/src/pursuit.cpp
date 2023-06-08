@@ -64,12 +64,12 @@ std::pair<double, double> PurePursuit::calculateCurvature(wbb_msgs::msg::ImagePo
     double chord = calculateDistance(lookahead, bot_pose);
 
     if (chord == 0 || scale == 0)
-        return 0;
+        return {0.0, 0.0};
 
     double alpha = std::atan2(lookahead->y - bot_pose->y, lookahead->x - bot_pose->x) -
                    M_PI / 2 + bot_pose->theta;
 
-    chord /= scale;
+    chord *= scale;
     double velocity = 0.5;
     if (std::sin(alpha) < 0)
         velocity *= -1;
@@ -296,6 +296,8 @@ void PurePursuit::sendControlCommand()
     msg.curvature = prop.first;
     visualizeRadius(msg.curvature, bot_pose, scale);
     msg.velocity = prop.second;
+    if (msg.curvature != 0)
+        RCLCPP_INFO(this->get_logger(), "%f %f", 1/msg.curvature, msg.velocity);
     signal_.control->publish(msg);
 }
 
