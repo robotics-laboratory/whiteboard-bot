@@ -1,38 +1,28 @@
-version: "3.5"
+version: "3.9"
 
 services:
-  wbb-amd64:
-    container_name: wbb
-    image: cr.yandex/crp8hpfj5tuhlaodm4dl/wbb:0.1.0-amd64
+  wbb:
+    container_name: "${CONTAINER_NAME:-wbb-${USER}}"
+    image: registry.robotics-lab.ru/wbb:0.1.0
     stdin_open: true
     privileged: true
     tty: true
     build:
       dockerfile: Dockerfile
       context: .
-      args:
-        ARCH: amd64
+      tags:
+        - "registry.robotics-lab.ru/wbb:latest"
+        - "registry.robotics-lab.ru/wbb:0.1.0"
+      x-bake:
+        platforms: [linux/arm64/v8, linux/amd64]
+        cache-to: "type=registry,ref=registry.robotics-lab.ru/wbb:cache,mode=max"
+        cache-from: "type=registry,ref=registry.robotics-lab.ru/wbb:cache"
     ports:
-    - "2222:2222"
-    - "9090:9090"
+      - "${FOXGLOVE_PORT:-9090}:9090"
     volumes:
       - "${PWD}:/wbb"
       - "/dev:/dev"
 
-  wbb-arm64v8:
-    container_name: wbb
-    image: cr.yandex/crp8hpfj5tuhlaodm4dl/wbb:0.1.0-arm64v8
-    stdin_open: true
-    privileged: true
-    tty: true
-    build:
-      dockerfile: Dockerfile
-      context: .
-      args:
-        ARCH: arm64v8
-    ports:
-    - "2222:2222"
-    - "9090:9090"
-    volumes:
-      - "${PWD}:/wbb"
-      - "/dev:/dev"
+networks:
+  default:
+    name: "${CONTAINER_NAME:-wbb-${USER}}"
