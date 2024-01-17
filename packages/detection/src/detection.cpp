@@ -50,8 +50,8 @@ std_msgs::msg::Header makeHeader(const rclcpp::Time& captured_time) {
 }
 
 visualization_msgs::msg::ImageMarker makeLineStrip(
-    int id, const std::vector<cv::Point2f>& coords, const rclcpp::Time& captured_time, bool close,
-    bool add) {
+    int id, const std::vector<cv::Point2f>& coords, const Color& color, float scale,
+    const rclcpp::Time& captured_time, bool close, bool add) {
     visualization_msgs::msg::ImageMarker msg;
 
     msg.header = makeHeader(captured_time);
@@ -66,24 +66,24 @@ visualization_msgs::msg::ImageMarker makeLineStrip(
 
     msg.action = visualization_msgs::msg::ImageMarker::ADD;
 
+    geometry_msgs::msg::Point point;
+    std_msgs::msg::ColorRGBA outline_color;
+
+    outline_color.r = color.r;
+    outline_color.g = color.g;
+    outline_color.b = color.b;
+    outline_color.a = color.a;
+
+    msg.outline_color = outline_color;
+    msg.scale = scale;
+
     size_t amount = coords.size();
     if (close) {
         amount += 1;
     }
 
-    geometry_msgs::msg::Point point;
-    std_msgs::msg::ColorRGBA color;
-
-    color.r = 1.0;
-    color.g = 0.0;
-    color.b = 0.0;
-    color.a = 1.0;
-
-    msg.outline_color = color;
-    msg.scale = 2;
-
     for (size_t i = 0; i < amount; ++i) {
-        msg.outline_colors.push_back(color);
+        msg.outline_colors.push_back(outline_color);
         point.x = coords[i % coords.size()].x;
         point.y = coords[i % coords.size()].y;
         msg.points.push_back(point);
@@ -93,13 +93,43 @@ visualization_msgs::msg::ImageMarker makeLineStrip(
 }
 
 foxglove_msgs::msg::ImageMarkerArray makeLineStripArray(
-    int id, const std::vector<std::vector<cv::Point2f>>& markers, const rclcpp::Time& captured_time,
-    bool close, bool add) {
+    int id, const std::vector<std::vector<cv::Point2f>>& markers, const Color& color, float scale,
+    const rclcpp::Time& captured_time, bool close, bool add) {
     foxglove_msgs::msg::ImageMarkerArray msg;
 
     for (const auto& marker : markers) {
-        const auto marker_msg = makeLineStrip(id, marker, captured_time, close, add);
+        const auto marker_msg = makeLineStrip(id, marker, color, scale, captured_time, close, add);
         msg.markers.push_back(marker_msg);
+    }
+
+    return msg;
+}
+
+visualization_msgs::msg::ImageMarker makePoints(
+    int id, const std::vector<cv::Point2f>& coords, const Color& color, float scale) {
+    visualization_msgs::msg::ImageMarker msg;
+
+    msg.ns = "";
+    msg.id = id;
+    msg.type = visualization_msgs::msg::ImageMarker::POINTS;
+    msg.action = visualization_msgs::msg::ImageMarker::ADD;
+
+    geometry_msgs::msg::Point point;
+    std_msgs::msg::ColorRGBA outline_color;
+
+    outline_color.r = color.r;
+    outline_color.g = color.g;
+    outline_color.b = color.b;
+    outline_color.a = color.a;
+
+    msg.outline_color = outline_color;
+    msg.scale = scale;
+
+    for (const auto& point_coords : coords) {
+        msg.outline_colors.push_back(outline_color);
+        point.x = point_coords.x;
+        point.y = point_coords.y;
+        msg.points.push_back(point);
     }
 
     return msg;

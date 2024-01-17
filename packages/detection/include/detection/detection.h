@@ -17,6 +17,23 @@ struct BotPose {
     float theta = 0.;
 };
 
+struct SegmentationGrid {
+    int resolution = 0;
+    int width = 0;
+    int height = 0;
+    std::vector<uint8_t> data{};
+};
+
+struct Color {
+    Color() = default;
+    Color(double r, double g, double b, double a) : r(r), g(g), b(b), a(a) {}
+
+    double r = 0.;
+    double g = 0.;
+    double b = 0.;
+    double a = 1.;
+};
+
 struct Marker {
     Marker() = default;
     Marker(int id, const std::vector<cv::Point2f>& corners) : id(id), corners(corners) {}
@@ -41,12 +58,15 @@ namespace msg {
 std_msgs::msg::Header makeHeader(const rclcpp::Time& capturing_time);
 
 visualization_msgs::msg::ImageMarker makeLineStrip(
-    int id, const std::vector<cv::Point2f>& coords, const rclcpp::Time& capturing_time,
-    bool close = true, bool add = true);
+    int id, const std::vector<cv::Point2f>& coords, const Color& color, float scale,
+    const rclcpp::Time& capturing_time, bool close = true, bool add = true);
 
 foxglove_msgs::msg::ImageMarkerArray makeLineStripArray(
-    int id, const std::vector<std::vector<cv::Point2f>>& markers,
+    int id, const std::vector<std::vector<cv::Point2f>>& markers, const Color& color, float scale,
     const rclcpp::Time& capturing_time, bool close = true, bool add = true);
+
+visualization_msgs::msg::ImageMarker makePoints(
+    int id, const std::vector<cv::Point2f>& coords, const Color& color, float scale);
 
 visualization_msgs::msg::ImageMarker makePolygon(const std::vector<std::pair<int, int>>& coords);
 
