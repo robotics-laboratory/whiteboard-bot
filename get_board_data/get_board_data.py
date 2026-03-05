@@ -23,7 +23,7 @@ def GetBoardData(frame, camera_matrix, dist_coeffs, detector, left_bottom, left_
             img_centers.append(center)
 
     if len(img_centers) < 3:
-        return None, None, None, None
+        return None, None, None, None, None
     img_centers = np.array(img_centers, dtype=np.float32)
     # 3d-координаты углов маркера в его собственной системе координат
     half = MARKER_SIZE / 2.0
