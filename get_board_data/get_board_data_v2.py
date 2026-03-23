@@ -1,8 +1,9 @@
 import cv2
 import numpy as np
+import time
 
-MARKER_SIZE = 0.065  # размер маркера в мм
-SMOOTH_ALPHA = 0.9   # коэффициент сглаживания доски
+MARKER_SIZE = 0.065  # marker size in mm
+SMOOTH_ALPHA = 0.9   # the smoothing coefficient of the board
 
 class SmoothBoard:
     def __init__(self, alpha):
@@ -33,7 +34,7 @@ class SmoothBoard:
 
 
 def GetBoardData(frame, camera_matrix, dist_coeffs, detector, left_bottom, left_top, right_top, right_bottom):
-    # получаем координаты угловых маркеров и их id
+    # get the coordinates of the corner markers and their IDs
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     corners, ids, _ = detector.detectMarkers(gray)
     if ids is not None:
@@ -41,12 +42,12 @@ def GetBoardData(frame, camera_matrix, dist_coeffs, detector, left_bottom, left_
     else:
         return None, None, None, None, None, None
 
-    # 3d-координаты углов маркера в его собственной системе координат
+    # 3d coordinates of the marker's corners in its own coordinate system
     half = MARKER_SIZE / 2.0
     marker_obj_points = np.array([[-half, -half, 0], [half, -half, 0], [half, half, 0], [-half, half, 0]], dtype=np.float32)
     corner_ids = [left_bottom, left_top, right_top, right_bottom]
 
-    # 3d-позиции центров угловых маркеров
+    # 3d positions of the corner marker centers
     positions = {}
     for corner_id in corner_ids:
         if corner_id in ids:
@@ -69,10 +70,10 @@ def GetBoardData(frame, camera_matrix, dist_coeffs, detector, left_bottom, left_
     board_normal = np.cross(board_x, board_y)
     board_normal = board_normal / np.linalg.norm(board_normal)
 
-    # сглаживание положения доски
+    # smoothing the board position
     smooth_board = SmoothBoard(SMOOTH_ALPHA)
     board_origin, board_x, board_y, board_normal = smooth_board.update(origin, board_x, board_y, board_normal)
-    # оценка размеров доски
+    # estimating board sizes
     widths = []
     heights = []
 
@@ -117,57 +118,49 @@ def GetRobotState(robot_pos, rvec_robot, board_origin, board_x, board_y):
 def Visualize(frame, detector, robot_pos, robot_theta, robot_x, robot_y, camera_matrix, dist_coeffs):
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     corners, ids, _ = detector.detectMarkers(gray)
-    # рисуем все найденные маркеры
+    # draw all the markers found
     if ids is not None:
         cv2.aruco.drawDetectedMarkers(frame, corners, ids)
 
     if robot_pos is not None:
-        # проекция позиции робота
+        # robot's position
         robot_2d, _ = cv2.projectPoints(robot_pos.reshape(1,3), np.zeros((3,1)), np.zeros((3,1)), camera_matrix, dist_coeffs)
         robot_2d = tuple(robot_2d[0][0].astype(int))
-        # круг в позиции робота
+        # circle around the robot
         cv2.circle(frame, robot_2d, 30, (0, 255, 0), 2)
-        # стрелка ориентации
+        # arrow
         arrow_end = robot_pos + np.array([0.05*np.cos(robot_theta), 0.05*np.sin(robot_theta), 0])
         arrow_2d, _ = cv2.projectPoints(arrow_end.reshape(1,3), np.zeros((3,1)), np.zeros((3,1)), camera_matrix, dist_coeffs)
         cv2.arrowedLine(frame, robot_2d, tuple(arrow_2d[0][0].astype(int)), (0,255,255), 2)
-        # текст с координатами
+        # text with coordinates
         cv2.putText(frame, f"x={robot_x:.3f} y={robot_y:.3f} th={robot_theta:.2f}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,255,0), 2)
 
     cv2.imshow('Result', frame)
     cv2.waitKey(0)
 
 def main():
-    # data = np.load('../camera_set_up/calibration_result.npz') # результаты калибровки камеры
     data = np.load('calibration_result6.yaml') # результаты калибровки камеры
     camera_matrix = data['camera_matrix']
     dist_coeffs = data['dist_coeffs']
     dictionary = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_250)
     detector = cv2.aruco.ArucoDetector(dictionary, cv2.aruco.DetectorParameters())
 
-    # id маркеров (соответствуют файлам 1.png, 2.png, 3.png, 4.png, 7.png)
+    # markers' ids
     left_bottom = 1
     left_top = 2
     right_top = 3
     right_bottom = 4
     robot = 7
 
-    # camera_index = 0
-    # cap = cv2.VideoCapture(camera_index)
-    # cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
-    # cap.set(cv2.CAP_PROP_FRAME_WIDTH, 3840)
-    # cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 2160)
-    # time.sleep(2)
-    # ok, frame = cap.read()
-    # print(f"Размер кадра: {frame.shape}")
-    # timestamp = int(time.time() * 1000)
-    # path = f"/Users/vmn/Downloads/saved/shot_{timestamp}.png"
-    # print(timestamp)
-    # cv2.imwrite(path, frame)
-    # cap.release()
+    camera_index = 0
+    cap = cv2.VideoCapture(camera_index)
+    cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 3840)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 2160)
+    time.sleep(2)
+    ok, frame = cap.read()
+    cap.release()
 
-    image_path = '/Users/vmn/Downloads/saved/shot_1773312585795.png'
-    frame = cv2.imread(image_path)
     print(f"Размер кадра: {frame.shape}")
     if frame is None:
         print("Ошибка при чтении файла")
@@ -180,7 +173,7 @@ def main():
 
     print(f"Размеры доски: {width:.4f} x {height:.4f} м")
 
-    # ищем маркер робота
+    # looking for a robot marker
     rvec_robot, robot_pos = DetectRobot(frame, camera_matrix, dist_coeffs, detector, robot)
     if robot_pos is not None:
         robot_x, robot_y, robot_theta = GetRobotState(robot_pos, rvec_robot, board_origin, board_x, board_y)
