@@ -2,35 +2,35 @@ import cv2
 import numpy as np
 import time
 
-MARKER_SIZE = 0.065  # размер маркера в м
+MARKER_SIZE = 0.065  # размер маркера в мм
 SMOOTH_ALPHA = 0.9   # коэффициент сглаживания доски
 
-# глобальные сглаженные параметры доски
-SMOOTHED_ORIGIN = None
-SMOOTHED_X = None
-SMOOTHED_Y = None
-SMOOTHED_NORMAL = None
+class SmoothBoard:
+    def __init__(self, alpha):
+        self.alpha = alpha
+        self.origin = None
+        self.x = None
+        self.y = None
+        self.normal = None
 
+    def update(self, origin, board_x, board_y, board_normal):
+        if self.origin is None:
+            self.origin = origin
+            self.x = board_x
+            self.y = board_y
+            self.normal = board_normal
+            return origin, board_x, board_y, board_normal
+        
+        self.origin = self.alpha * self.origin + (1 - self.alpha) * origin
+        self.x = self.alpha * self.x + (1 - self.alpha) * board_x
+        self.y = self.alpha * self.y + (1 - self.alpha) * board_y
+        self.normal = self.alpha * self.normal + (1 - self.alpha) * board_normal
 
-def SmoothBoard(origin, board_x, board_y, board_normal):
-    global SMOOTHED_ORIGIN, SMOOTHED_X, SMOOTHED_Y, SMOOTHED_NORMAL
-    if SMOOTHED_ORIGIN is None:
-        SMOOTHED_ORIGIN = origin
-        SMOOTHED_X = board_x
-        SMOOTHED_Y = board_y
-        SMOOTHED_NORMAL = board_normal
-        return origin, board_x, board_y, board_normal
-
-    SMOOTHED_ORIGIN = SMOOTH_ALPHA * SMOOTHED_ORIGIN + (1 - SMOOTH_ALPHA) * origin
-    SMOOTHED_X = SMOOTH_ALPHA * SMOOTHED_X + (1 - SMOOTH_ALPHA) * board_x
-    SMOOTHED_Y = SMOOTH_ALPHA * SMOOTHED_Y + (1 - SMOOTH_ALPHA) * board_y
-    SMOOTHED_NORMAL = SMOOTH_ALPHA * SMOOTHED_NORMAL + (1 - SMOOTH_ALPHA) * board_normal
-
-    SMOOTHED_X = SMOOTHED_X / np.linalg.norm(SMOOTHED_X)
-    SMOOTHED_Y = SMOOTHED_Y / np.linalg.norm(SMOOTHED_Y)
-    SMOOTHED_NORMAL = SMOOTHED_NORMAL / np.linalg.norm(SMOOTHED_NORMAL)
-
-    return SMOOTHED_ORIGIN, SMOOTHED_X, SMOOTHED_Y, SMOOTHED_NORMAL
+        self.x = self.x / np.linalg.norm(self.x)
+        self.y = self.y / np.linalg.norm(self.y)
+        self.normal = self.normal / np.linalg.norm(self.normal)
+        
+        return self.origin, self.x, self.y, self.normal
 
 
 def GetBoardData(frame, camera_matrix, dist_coeffs, detector, left_bottom, left_top, right_top, right_bottom):
@@ -57,27 +57,10 @@ def GetBoardData(frame, camera_matrix, dist_coeffs, detector, left_bottom, left_
             if success:
                 positions[corner_id] = tvec.flatten()
 
-    # если найдено меньше 4 маркеров доски — не можем построить плоскость
-    if len(positions) < 4:
-        return None, None, None, None, None, None
-
     origin = positions[left_bottom]
 
-    # ищем точку для оси X
-    if right_bottom in positions and left_bottom in positions:
-        x_ref = positions[right_bottom]
-    elif right_top in positions and left_top in positions:
-        x_ref = positions[right_top]
-    else:
-        x_ref = list(positions.values())[1]
-
-    # ищем точку для оси Y
-    if left_top in positions and left_bottom in positions:
-        y_ref = positions[left_top]
-    elif right_top in positions and right_bottom in positions:
-        y_ref = positions[right_top]
-    else:
-        y_ref = list(positions.values())[2]
+    x_ref = positions[right_bottom]
+    y_ref = positions[left_top]
 
     v_x = x_ref - origin
     board_x = v_x / np.linalg.norm(v_x)
@@ -88,19 +71,16 @@ def GetBoardData(frame, camera_matrix, dist_coeffs, detector, left_bottom, left_
     board_normal = board_normal / np.linalg.norm(board_normal)
 
     # сглаживание положения доски
-    board_origin, board_x, board_y, board_normal = SmoothBoard(origin, board_x, board_y, board_normal)
+    smooth_board = SmoothBoard(SMOOTH_ALPHA)
+    board_origin, board_x, board_y, board_normal = smooth_board.update(origin, board_x, board_y, board_normal)
     # оценка размеров доски
     widths = []
     heights = []
 
-    if left_bottom in positions and right_bottom in positions:
-        widths.append(np.linalg.norm(positions[left_bottom] - positions[right_bottom]))
-    if left_top in positions and right_top in positions:
-        widths.append(np.linalg.norm(positions[left_top] - positions[right_top]))
-    if left_bottom in positions and left_top in positions:
-        heights.append(np.linalg.norm(positions[left_bottom] - positions[left_top]))
-    if right_bottom in positions and right_top in positions:
-        heights.append(np.linalg.norm(positions[right_bottom] - positions[right_top]))
+    widths.append(np.linalg.norm(positions[left_bottom] - positions[right_bottom]))
+    widths.append(np.linalg.norm(positions[left_top] - positions[right_top]))
+    heights.append(np.linalg.norm(positions[left_bottom] - positions[left_top]))
+    heights.append(np.linalg.norm(positions[right_bottom] - positions[right_top]))
 
     width = sum(widths) / len(widths) if len(widths) > 0 else 0
     height = sum(heights) / len(heights) if len(heights) > 0 else 0
@@ -135,6 +115,28 @@ def GetRobotState(robot_pos, rvec_robot, board_origin, board_x, board_y):
     theta = np.arctan2(np.dot(robot_forward, board_y), np.dot(robot_forward, board_x))
     return x, y, theta
 
+def Visualize(frame, detector, robot_pos, robot_theta, robot_x, robot_y, camera_matrix, dist_coeffs):
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    corners, ids, _ = detector.detectMarkers(gray)
+    # рисуем все найденные маркеры
+    if ids is not None:
+        cv2.aruco.drawDetectedMarkers(frame, corners, ids)
+
+    if robot_pos is not None:
+        # проекция позиции робота
+        robot_2d, _ = cv2.projectPoints(robot_pos.reshape(1,3), np.zeros((3,1)), np.zeros((3,1)), camera_matrix, dist_coeffs)
+        robot_2d = tuple(robot_2d[0][0].astype(int))
+        # круг в позиции робота
+        cv2.circle(frame, robot_2d, 30, (0, 255, 0), 2)
+        # стрелка ориентации
+        arrow_end = robot_pos + np.array([0.05*np.cos(robot_theta), 0.05*np.sin(robot_theta), 0])
+        arrow_2d, _ = cv2.projectPoints(arrow_end.reshape(1,3), np.zeros((3,1)), np.zeros((3,1)), camera_matrix, dist_coeffs)
+        cv2.arrowedLine(frame, robot_2d, tuple(arrow_2d[0][0].astype(int)), (0,255,255), 2)
+        # текст с координатами
+        cv2.putText(frame, f"x={robot_x:.3f} y={robot_y:.3f} th={robot_theta:.2f}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,255,0), 2)
+
+    cv2.imshow('Result', frame)
+    cv2.waitKey(0)
 
 def main():
     # data = np.load('../camera_set_up/calibration_result.npz') # результаты калибровки камеры
@@ -187,6 +189,7 @@ def main():
     else:
         print("Не удалось обнаружить робота")
 
+    Visualize(frame, detector, robot_pos, robot_theta, robot_x, robot_y, camera_matrix, dist_coeffs)
 
 if __name__ == "__main__":
     main()
