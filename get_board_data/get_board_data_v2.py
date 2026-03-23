@@ -57,15 +57,11 @@ def GetBoardData(frame, camera_matrix, dist_coeffs, detector, left_bottom, left_
             if success:
                 positions[corner_id] = tvec.flatten()
 
-    # если найдено меньше 3 маркеров доски — не можем построить плоскость
-    if len(positions) < 3:
+    # если найдено меньше 4 маркеров доски — не можем построить плоскость
+    if len(positions) < 4:
         return None, None, None, None, None, None
 
-    # выбираем origin
-    if left_bottom in positions:
-        origin = positions[left_bottom]
-    else:
-        origin = list(positions.values())[0]
+    origin = positions[left_bottom]
 
     # ищем точку для оси X
     if right_bottom in positions and left_bottom in positions:
