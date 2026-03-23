@@ -1,6 +1,5 @@
 import cv2
 import numpy as np
-import time
 
 MARKER_SIZE = 0.065  # размер маркера в мм
 SMOOTH_ALPHA = 0.9   # коэффициент сглаживания доски
@@ -140,7 +139,7 @@ def Visualize(frame, detector, robot_pos, robot_theta, robot_x, robot_y, camera_
 
 def main():
     # data = np.load('../camera_set_up/calibration_result.npz') # результаты калибровки камеры
-    data = np.load('calibration_result6.npz') # результаты калибровки камеры
+    data = np.load('calibration_result6.yaml') # результаты калибровки камеры
     camera_matrix = data['camera_matrix']
     dist_coeffs = data['dist_coeffs']
     dictionary = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_250)
