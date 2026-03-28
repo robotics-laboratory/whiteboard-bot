@@ -1,0 +1,60 @@
+#include <Arduino.h>
+#include <Network.h>
+#include <WiFi.h>
+#include <string>
+
+const char* ssid = "robotics-lab";
+const char* password = "2i9den57sh";
+
+NetworkServer server(8080);
+
+std::string rdln(NetworkClient& stream) {
+    std::string ans;
+    while (ans.empty() || ans.back() != '\n') {
+        int c = stream.read();
+        if (c < 0) {
+            return "";
+        }
+        ans.push_back(c);
+    }
+    return ans;
+}
+
+void setup() {
+    Network.begin();
+    Serial.begin(115200);
+    while (!Serial) { delay(10); };
+    WiFi.begin(ssid, password);             // Connect to the network
+    while (WiFi.status() != WL_CONNECTED) { // Wait for the Wi-Fi to connect
+        delay(500);
+        Serial.print('.');
+    }
+    Serial.println('\n');
+    Serial.println("Connection established");  
+    server.begin();
+    Serial.print("Server started on:\t");
+    Serial.println(WiFi.localIP()); 
+}
+void loop() {
+
+    NetworkClient client = server.accept();
+    if (client) {
+        Serial.println("New Client.");
+
+        while (client.connected()) {
+            if (client.available()) {
+                auto s = rdln(client);
+                if (s != "") {
+                    Serial.println(s.c_str());
+                } else {
+                    client.write("please respond:\t");
+                    client.write(s.c_str());
+                    client.write("\n");
+                    Serial.println("No message");
+                }
+                delay(100);
+            }
+        }
+    }
+    
+}
