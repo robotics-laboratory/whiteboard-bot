@@ -20,7 +20,7 @@ class SmoothBoard:
             self.y = board_y
             self.normal = board_normal
             return origin, board_x, board_y, board_normal
-        
+
         self.origin = self.alpha * self.origin + (1 - self.alpha) * origin
         self.x = self.alpha * self.x + (1 - self.alpha) * board_x
         self.y = self.alpha * self.y + (1 - self.alpha) * board_y
@@ -29,7 +29,7 @@ class SmoothBoard:
         self.x = self.x / np.linalg.norm(self.x)
         self.y = self.y / np.linalg.norm(self.y)
         self.normal = self.normal / np.linalg.norm(self.normal)
-        
+
         return self.origin, self.x, self.y, self.normal
 
 
@@ -57,10 +57,10 @@ def GetBoardData(frame, camera_matrix, dist_coeffs, detector, left_bottom, left_
             if success:
                 positions[corner_id] = tvec.flatten()
 
-    origin = positions[left_bottom]
+    origin = origin = sum(positions.values()) / 4.0
 
-    x_ref = positions[right_bottom]
-    y_ref = positions[left_top]
+    x_ref = (positions[right_bottom] + positions[right_top]) / 2.0
+    y_ref = (positions[left_top] + positions[right_top]) / 2.0
 
     v_x = x_ref - origin
     board_x = v_x / np.linalg.norm(v_x)
@@ -74,16 +74,8 @@ def GetBoardData(frame, camera_matrix, dist_coeffs, detector, left_bottom, left_
     smooth_board = SmoothBoard(SMOOTH_ALPHA)
     board_origin, board_x, board_y, board_normal = smooth_board.update(origin, board_x, board_y, board_normal)
     # estimating board sizes
-    widths = []
-    heights = []
-
-    widths.append(np.linalg.norm(positions[left_bottom] - positions[right_bottom]))
-    widths.append(np.linalg.norm(positions[left_top] - positions[right_top]))
-    heights.append(np.linalg.norm(positions[left_bottom] - positions[left_top]))
-    heights.append(np.linalg.norm(positions[right_bottom] - positions[right_top]))
-
-    width = sum(widths) / len(widths) if len(widths) > 0 else 0
-    height = sum(heights) / len(heights) if len(heights) > 0 else 0
+    width = (np.linalg.norm(positions[right_bottom] - positions[left_bottom]) + np.linalg.norm(positions[right_top] - positions[left_top])) / 2.0
+    height = (np.linalg.norm(positions[left_top] - positions[left_bottom]) + np.linalg.norm(positions[right_top] - positions[right_bottom])) / 2.0
 
     return board_origin, board_x, board_y, board_normal, width, height
 
