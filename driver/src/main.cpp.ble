@@ -1,0 +1,36 @@
+#include "BluetoothSerial.h"  
+  
+BluetoothSerial SerialBT;  
+  
+// Called when both devices show a 6-digit code (numeric comparison)  
+void onConfirmRequest(uint32_t numVal) {  
+  Serial.printf("Confirm this number matches on peer: %06d\n", numVal);  
+  // For demo, auto-accept; in production, prompt user  
+  SerialBT.confirmReply(true);  
+}  
+  
+// Called when pairing completes  
+void onAuthComplete(bool success) {  
+  Serial.println(success ? "Pairing success" : "Pairing failed");  
+}  
+  
+void setup() {  
+  Serial.begin(115200);  
+  // Enable SSP with Display+Yes (numeric comparison) before begin()  
+  SerialBT.enableSSP(false, true); // input=false, output=true  
+  SerialBT.onConfirmRequest(onConfirmRequest);  
+  SerialBT.onAuthComplete(onAuthComplete);  
+  
+  SerialBT.begin("ESP32_SSP_Slave"); // Slave mode by default  
+  Serial.println("Bluetooth SSP slave ready. Pairing requires numeric comparison.");  
+}  
+  
+void loop() {  
+  if (SerialBT.hasClient()) {  
+    if (SerialBT.available()) {  
+      char c = SerialBT.read();  
+      Serial.write(c);  
+    }  
+  }  
+  delay(10);  
+}

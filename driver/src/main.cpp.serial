@@ -1,0 +1,218 @@
+#include <Arduino.h>
+#include <Network.h>
+#include <WiFi.h>
+#include <netinet/in.h>
+#include "SimpleFOC.h"
+#include "SimpleFOCDrivers.h"
+#include "SimpleDCMotor.h"
+#include "encoders/esp32hwencoder/ESP32HWEncoder.h"
+#include <sys/socket.h>
+
+// const char* ssid = "robomarvel";
+// const char* password = "robomarvel";
+// const char* ssid = "ARA";
+// const char* password = "4@rVn2LzUY";
+// const char* ssid = "iPhone (Антон)";
+// const char* password = "12345678";
+const char* ssid = "robotics-lab";
+const char* password = "2i9den57sh";
+
+// NetworkServer server(8080);
+// NetworkClient client;
+
+#define MON_ENABLE
+
+const int ENCODER_CPR = 2660;
+constexpr float VOLTAGE = 1.0f;
+constexpr float VEL_LIM = 10;
+const int PWM_FREQ = 50000;
+
+constexpr float VEL_PID_P = 2.0f;
+constexpr float VEL_PID_I = 20.0f;
+constexpr float VEL_PID_D = 0.001f;
+constexpr float VEL_PID_LIM = 400.0f;
+constexpr float VEL_LPF_TF = 0.01f;
+
+constexpr float EPSILON = 0.001f;
+
+class CustomMotor : public DCMotor {
+public:
+    using DCMotor::DCMotor;
+
+    virtual void setPhaseVoltage(float Uq, float Ud, float angle_el) override {
+        if (enabled) {
+            if (fabs(target) < EPSILON) {
+                driver->setPwm(0);
+                driver->disable();
+            } else if (fabs(Uq) < EPSILON) {
+                driver->setPwm(0);
+            } else if ((target > 0 && Uq < 0) || (target < 0 && Uq > 0)) {
+                driver->setPwm(0);
+                driver->disable();
+            } else {
+                driver->setPwm(Uq);
+            }
+        }
+        _UNUSED(Ud);
+        _UNUSED(angle_el);
+    }
+};
+
+class CustomDriver : public DCDriver1PWM2Dir {
+    public:
+        using DCDriver1PWM2Dir::DCDriver1PWM2Dir;
+
+        void setPwm(float U) override {
+            // if (abs(U) < 1.0) {
+            //     digitalWrite(pinDIR1, LOW);
+            //     digitalWrite(pinDIR2, LOW);
+            // } else {
+                DCDriver1PWM2Dir::setPwm(U);
+            // }
+        }
+};
+
+Commander commander = Commander(Serial);
+
+CustomMotor motor_left = CustomMotor();
+CustomDriver driver_left = CustomDriver(25, 21, 17);
+ESP32HWEncoder sensor_left = ESP32HWEncoder(35, 34, ENCODER_CPR);
+void onMotorLeft(char* cmd){ commander.motor(&motor_left, cmd); }
+
+CustomMotor motor_right = CustomMotor();
+CustomDriver driver_right = CustomDriver(26, 22, 23);
+ESP32HWEncoder sensor_right = ESP32HWEncoder(27, 16, ENCODER_CPR);
+void onMotorRight(char* cmd){ commander.motor(&motor_right, cmd); }
+
+// TwoWire IIC2(PB11, PB10);
+// CustomMotor motor_right = CustomMotor();
+// CustomDriver driver_right = CustomDriver(PC15, PA0);
+// MagneticSensorI2C sensor_right(MT6701_I2C);
+// void onMotorRight(char* cmd){ commander.motor(&motor_right, cmd); }
+
+void initMotorStack(char c, CustomMotor &motor, CustomDriver &driver, ESP32HWEncoder &sensor) {
+    driver.voltage_power_supply = VOLTAGE;
+    driver.voltage_limit = VOLTAGE;
+    driver.pwm_frequency = PWM_FREQ;
+    driver.init();
+    sensor.init();
+    motor.linkDriver(&driver);
+    motor.linkSensor(&sensor);
+
+    motor.voltage_limit = VOLTAGE;
+    motor.velocity_limit = VEL_LIM;
+    motor.controller = MotionControlType::velocity;
+    motor.torque_controller = TorqueControlType::voltage;
+    motor.init();
+
+    motor.PID_velocity.P = VEL_PID_P;
+    motor.PID_velocity.I = VEL_PID_I;
+    motor.PID_velocity.D = VEL_PID_D;
+    motor.PID_velocity.output_ramp = VEL_PID_LIM;
+    motor.LPF_velocity.Tf = VEL_LPF_TF;
+
+    #ifdef MON_ENABLE
+    motor.useMonitoring(Serial);
+    motor.monitor_downsample = 1;
+    motor.monitor_variables = _MON_TARGET | _MON_VOLT_Q | _MON_VEL | _MON_ANGLE;
+    motor.monitor_start_char = c;
+    #endif
+
+    motor.target = 0.0f;
+    motor.enable();
+}
+
+void setup() {
+    // Network.begin();
+    Serial.begin(115200);
+    while (!Serial) { delay(10); };
+    // SerialBT.begin("WBB-bluetooth");
+    // Serial.println("Bluetooth ready");
+    // WiFi.begin(ssid, password);             // Connect to the network
+    // while (WiFi.status() != WL_CONNECTED) { // Wait for the Wi-Fi to connect
+    //    delay(500);
+    //    Serial.print('.');
+    // }
+    Serial.println('\n');
+    Serial.println("Connection established");  
+    // server.begin();
+    Serial.print("Server started on:\t");
+    Serial.println(WiFi.localIP()); 
+    while (!client) {
+        client = server.accept();
+    }
+    client.setNoDelay(true);
+    int value  = 1;
+    client.setSocketOption(6, TCP_NODELAY, &value, sizeof value);
+    client.setSocketOption(SOL_SOCKET, SO_KEEPALIVE, &value, sizeof value);
+    client.setSocketOption(SOL_SOCKET, SO_REUSEADDR, &value, sizeof value);
+    Serial.println("New Client.");
+    // SimpleFOCDebug::enable(&client);
+    SimpleFOCDebug::enable(&Serial);
+    // client.println("init start");
+    initMotorStack('L', motor_left, driver_left, sensor_left);
+    initMotorStack('R', motor_right, driver_right, sensor_right);
+    commander.add('L', onMotorLeft, "left motor");
+    commander.add('R', onMotorRight, "right motor");
+    commander.motor(&motor_left, "1");
+}
+
+uint32_t last_ts = 0;
+
+void loop() {
+     // if (Serial.available()) {
+     //     SerialBT.write(Serial.read());
+     // }
+     // if (SerialBT.available()) {
+     //     Serial.write(ESP_BT.read());
+     // }
+     // delay(20);
+    motor_left.move();
+    motor_right.move();
+    commander.run();
+    uint32_t now = micros();
+    if ((now - last_ts >= 10000) || (now < last_ts)) {
+        motor_left.monitor();
+        motor_right.monitor();
+        last_ts = now;
+    }
+}
+// This example code is in the Public Domain (or CC0 licensed, at your option.)
+// By Evandro Copercini - 2018
+//
+// This example creates a bridge between Serial and Classical Bluetooth (SPP)
+// and also demonstrate that SerialBT have the same functionalities of a normal Serial
+// Note: Pairing is authenticated automatically by this device
+
+// #include "BluetoothSerial.h"
+//
+// String device_name = "ESP32-BT-Slave";
+//
+// // Check if Bluetooth is available
+// #if !defined(CONFIG_BT_ENABLED) || !defined(CONFIG_BLUEDROID_ENABLED)
+// #error Bluetooth is not enabled! Please run `make menuconfig` to and enable it
+// #endif
+//
+// // Check Serial Port Profile
+// #if !defined(CONFIG_BT_SPP_ENABLED)
+// #error Serial Port Profile for Bluetooth is not available or not enabled. It is only available for the ESP32 chip.
+// #endif
+//
+// BluetoothSerial SerialBT;
+//
+// void setup() {
+//   Serial.begin(115200);
+//   SerialBT.begin(device_name);  //Bluetooth device name
+//   //SerialBT.deleteAllBondedDevices(); // Uncomment this to delete paired devices; Must be called after begin
+//   Serial.printf("The device with name \"%s\" is started.\nNow you can pair it with Bluetooth!\n", device_name.c_str());
+// }
+//
+// void loop() {
+//   if (Serial.available()) {
+//     SerialBT.write(Serial.read());
+//   }
+//   if (SerialBT.available()) {
+//     Serial.write(SerialBT.read());
+//   }
+//   delay(20);
+// }
